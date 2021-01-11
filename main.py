@@ -6,6 +6,7 @@ from discord.ext.commands.context import Context
 from discord.member import Member
 from discord.reaction import Reaction
 from discord.user import User
+import os
 from MainCog import MainCog
 
 storyLinksChannelIDs = [794355705368018954, 792629600860897330, 798023111453966347]
@@ -34,4 +35,4 @@ async def globalCheck(ctx: Context):
         await ctx.message.delete()
     return True
 
-bot.run("Nzg1MjIyMTI5MDYxOTg2MzA0.X80tGA.yyqOkiIfkz_KmeODUOPSxKhNPZE")
+bot.run(os.getenv("DISCORD_SECRET_PWUBOT"))

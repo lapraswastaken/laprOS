@@ -1,32 +1,33 @@
 
 
+from typing import Optional
 from discord.message import Message
 from discord.user import User
 import re
 
-ratingPat = re.compile(r"(.+?)\s*\((.+)\)")
-charsPat = re.compile(r"(\S+?)\s*\|\s*(\S+?)(?:,|$)")
-linkPat = re.compile(r"- <(.+)>")
+ratingPat = re.compile(r"(.+?)(?:\s*\((.+)\))?")
+charsPat = re.compile(r"\s*(.+?)(?:\s*\|\s*(.+?))?(?:,|$)")
+linkPat = re.compile(r"- (.+): <(.+)>")
 
 class Character:
-    def __init__(self, name: str, species: str):
+    def __init__(self, name: str, species: Optional[str]):
         self.name = name
         self.species = species
     
     def __str__(self):
-        return self.name + " | " + self.species
+        return self.name + ((" | " + self.species) if self.species else "")
 
 class Story:
-    def __init__(self, title: str, authorUser: User, genres: list[str]=[], rating: str="", ratingReason: str="", characters: list[Character]=[], summary: str="", links: list[str]=[]):
+    def __init__(self, title: str, authorUser: User, genres: list[str]=[], rating: str="", ratingReason: str="", characters: list[Character]=[], summary: str="", links: dict[str, str]={}):
         self.title = title
         self.authorUser = authorUser
         
-        self.genres: list[str] = genres
+        self.genres = genres
         self.rating = rating
         self.ratingReason = ratingReason
-        self.characters: list[Character] = characters
+        self.characters = characters
         self.summary = summary
-        self.links: list[str] = links
+        self.links = links
     
     def __str__(self):
         return f"Title: {self.title}\nAuthor ID: {self.authorUser.id}\nGenres: {self.genres}\nRating: {self.rating}\nReason: {self.ratingReason}\nCharacters: {self.characters}\nSummary: {self.summary}\nLinks: {self.links}"
@@ -35,7 +36,7 @@ class Story:
         genresStr = ", ".join(self.genres)
         ratingStr = self.rating + (f" ({self.ratingReason})" if self.ratingReason else "")
         charsStr = ", ".join([str(char) for char in self.characters])
-        linksStr = "\n".join(["- <" + link + ">" for link in self.links])
+        linksStr = "\n".join([f"- {linkName}: <{self.links[linkName]}>" for linkName in sorted(self.links.keys())])
         summaryStr = f"```\n{self.summary}\n```" if self.summary else ""
         return "" + \
             f"**Title**: {self.title}\n" + \
@@ -48,13 +49,14 @@ class Story:
     @staticmethod
     def newFromText(writerUser: User, text: str):
         lines = text.split("\n")
-        print(lines)
         getter = lambda i: lines[i].split(":", 1)[1].strip()
         title = getter(0)
-        genres = getter(1).split(", ")
-        ratingRaw = getter(2)
-        ratingMatch = ratingPat.search(ratingRaw)
-        rating, reason = ratingMatch.groups() if ratingMatch else ["", ""]
+        genres = [genre for genre in getter(1).split(", ") if genre]
+        ratingRaw = getter(2).split("(", 1)
+        rating = ratingRaw[0].strip()
+        reason = ""
+        if len(ratingRaw) == 2:
+            reason = ratingRaw[1][:-1].strip()
         charsRaw = getter(3)
         chars: list[Character] = []
         for charName, charSpecies in charsPat.findall(charsRaw):
@@ -72,12 +74,12 @@ class Story:
                 summary.append(lines[i])
             i += 1
         summary = "\n".join(summary)
-        links = []
+        links = {}
+        i += 1
         while i < len(lines):
-            if not lines[i].startswith("Links:"):
-                linksMatch = linkPat.search(lines[i])
-                if linksMatch:
-                    links.append(linksMatch.group(1))
+            linksMatch = linkPat.search(lines[i])
+            if linksMatch:
+                links[linksMatch.group(1)] = linksMatch.group(2)
             i += 1
         
         return Story(title, writerUser, genres, rating, reason, chars, summary, links)

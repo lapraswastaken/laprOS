@@ -13,26 +13,34 @@ digitsPat = re.compile(r"(\d+)")
 separator = "\n\n=====\n\n"
 allRatings = ["K", "K+", "T", "M"]
 allGenres = [
-    "General",
-    "Romance",
-    "Humor",
-    "Drama",
-    "Poetry",
     "Adventure",
-    "Mystery",
-    "Horror",
-    "Parody",
     "Angst",
+    "Crime",
+    "Drama",
+    "Family",
+    "Fantasy",
+    "Friendship",
+    "General",
+    "Horror",
+    "Humor",
+    "Hurt/comfort",
+    "Mystery",
+    "Poetry",
+    "Parody",
+    "Romance",
     "Supernatural",
     "Suspense",
     "Sci-fi",
-    "Fantasy",
     "Spiritual",
     "Tragedy",
-    "Western",
-    "Crime",
-    "Family",
-    "Hurt/Comfort"
+    "Western"
+]
+allLinkNames = [
+    "AO3",
+    "FFN",
+    "RR",
+    "DA",
+    "WP"
 ]
 
 class StoryCog(Cog):
@@ -42,8 +50,6 @@ class StoryCog(Cog):
         self.storyLinksChannelIDs = channelIDs
     
     async def cog_check(self, ctx: Context):
-        if ctx.command.name == "help":
-            return True
         if not ctx.channel.id in self.storyLinksChannelIDs:
             await ctx.send(content="This part of the bot can only be used in the channel that hosts story links.")
             return False
@@ -64,7 +70,7 @@ class StoryCog(Cog):
                 break
         return foundMessage
     
-    async def setStoryAttr(self, ctx: Context, targetTitle: str, changeCallback: Callable[[Story], None]):
+    async def setStoryAttr(self, ctx: Context, targetTitle: Optional[str], changeCallback: Callable[[Story], None]):
         """ Finds the Story with the given title and performs the changeCallback on it. """
         
         foundMessage = await self.getMessageForContext(ctx)
@@ -75,15 +81,18 @@ class StoryCog(Cog):
         stories = StoryCog.getStoriesFromMessage(foundMessage, ctx.author)
         
         targetStory = None
-        for story in stories:
-            if story.title == targetTitle:
-                targetStory = story
-                break
+        if stories and not targetTitle:
+            targetStory = stories[-1]
+        else:
+            for story in stories:
+                if story.title == targetTitle:
+                    targetStory = story
+                    break
         if not targetStory:
             await dmError(ctx, f"Could not find a story you've created with the given name ({targetTitle}).")
             return
         
-        changeCallback(targetStory)
+        await changeCallback(targetStory)
         
         await StoryCog.updateMessageWithStories(ctx.author, foundMessage, stories)
     
@@ -92,13 +101,11 @@ class StoryCog(Cog):
         """ Creates a list of stories from a message.
             Makes the author of all created stories the targetAuthor, confirmed with StoryCog.isMessageForAuthor. """
         
-        storiesRaw = message.content.split(separator)
-        writerRaw, *storiesRaw = storiesRaw
+        storiesRaw = message.content.split(separator)[1:]
         
         stories: list[Story] = []
         for storyRaw in storiesRaw:
             story = Story.newFromText(targetAuthor, storyRaw)
-            print(story)
             stories.append(story)
         return stories
         
@@ -141,68 +148,122 @@ class StoryCog(Cog):
         await StoryCog.updateMessageWithStories(ctx.author, foundMessage, stories)
     
     @command(ignore_extra=False)
-    async def settitle(self, ctx: Context, targetTitle: str, newTitle: str):
-        """ Finds the story with the given title and alters its title. """
+    async def settitle(self, ctx: Context, newTitle: str, targetTitle: str=None):
+        """ Sets the title of the latest-added story of the issuer.
+            if targetTitle is specified, sets the title of that story instead (this is somewhat unintuitive - the first parameter is still the new name of the story). """
             
-        def changeTitle(story: Story):
+        async def changeTitle(story: Story):
             story.title = newTitle
         await self.setStoryAttr(ctx, targetTitle, changeTitle)
 
     @command(ignore_extra=False)
-    async def setgenres(self, ctx: Context, targetTitle: str, *newGenres: str):
-        """ Finds the story with the given title and alters its genres. """
+    async def addgenre(self, ctx: Context, newGenre: str, targetTitle: str=None):
+        """ Adds a genre to the latest-added story of the issuer.
+            If targetTitle is specified, adds the genre to that story instead. """
         
-        newGenres = [genre.capitalize() for genre in newGenres]
+        if not newGenre.capitalize() in allGenres:
+            await dmError(ctx, f"The genre specified ({newGenre}) is not one of:\n\n" + "\n".join(allGenres))
+            return
         
-        for genre in newGenres:
-            if not genre in allGenres:
-                await dmError(ctx, f"The genre specified ({genre}) is not one of:\n  " + "  \n".join(allGenres))
-                return
-        
-        def changeGenres(story: Story):
-            story.genres = newGenres
-        await self.setStoryAttr(ctx, targetTitle, changeGenres)
+        async def changeGenre(story: Story):
+            story.genres.append(newGenre.capitalize())
+        await self.setStoryAttr(ctx, targetTitle, changeGenre)
     
     @command(ignore_extra=False)
-    async def setrating(self, ctx: Context, targetTitle: str, newRating: str):
-        """ Finds the story with the given title and alters its rating. """
+    async def removegenre(self, ctx: Context, targetGenre: str, targetTitle: str=None):
+        """ Removes the specified genre from the latest-added story of the issuer.
+            If targetTitle is specified, removes the genre from that story instead. """
+        
+        async def changeGenre(story: Story):
+            found = None
+            for genre in story.genres:
+                if genre == targetGenre:
+                    found = genre
+            if found:
+                story.genres.remove(found)
+            else:
+                await dmError(ctx, f"That story does not have a genre called {targetGenre}")
+        await self.setStoryAttr(ctx, targetTitle, changeGenre)
+    
+    @command(ignore_extra=False)
+    async def setrating(self, ctx: Context, newRating: str, targetTitle: str=None):
+        """ Sets the rating for the latest-added story of the issuer.
+            If targetTitle is specified, sets the rating for that story instead. """
         
         if not newRating in allRatings:
             await dmError(ctx, f"The rating for your story must be one of {allRatings}, not {newRating}.")
             return
         
-        def changeRating(story: Story):
+        async def changeRating(story: Story):
             story.rating = newRating
         await self.setStoryAttr(ctx, targetTitle, changeRating)
     
     @command(ignore_extra=False)
-    async def setratingreason(self, ctx: Context, targetTitle: str, newReason: str):
-        """ Finds the story with the given title and alters the reason for its rating. """
+    async def setratingreason(self, ctx: Context, newReason: str, targetTitle: str=None):
+        """ Sets the rating reason for the latest-added story of the issuer.
+            If targetTitle is specified, sets the rating reason for that story instead. """
         
         def changeReason(story: Story):
             story.ratingReason = newReason
         await self.setStoryAttr(ctx, targetTitle, changeReason)
 
     @command(ignore_extra=False)
-    async def addcharacter(self, ctx: Context, targetTitle: str, charName: str, charSpecies: str):
-        """ Finds the story with the given title and adds to it a new character with the given name and species. """
+    async def addcharacter(self, ctx: Context, newCharName: str, charSpecies: str=None, targetTitle: str=None):
+        """ Adds a character with the given name to the latest-added story of the issuer.
+            A species can be given to the character with the charSpecies parameter. If this needs to be omitted so that a speciesless character can be added to a specific story, an empty string ("") can be passed.
+            If targetTitle is specified, adds a character to that story instead. """
         
-        newChar = Character(charName, charSpecies)
+        newChar = Character(newCharName, charSpecies)
         
-        def changeCharacter(story: Story):
+        async def changeCharacter(story: Story):
             story.characters.append(newChar)
         await self.setStoryAttr(ctx, targetTitle, changeCharacter)
     
     @command(ignore_extra=False)
-    async def removecharacter(self, ctx: Context, targetTitle: str, charName: str):
-        """ Finds the story with the given title and removes from it a character with the given name. 
-            Note: does not send an error message if there is no character with the given name. """
+    async def removecharacter(self, ctx: Context, targetCharName: str, targetTitle: str=None):
+        """ Removes a character with the given name from the latest-added story of the issuer.
+            If targetTitle is specified, removes a character from that story instead. """
         
-        def changeCharacter(story: Story):
+        async def changeCharacter(story: Story):
             found = None
             for char in story.characters:
-                if char.name == charName:
+                if char.name == targetCharName:
                     found = char
             if found:
                 story.characters.remove(found)
+            else:
+                await dmError(ctx, f"That story does not have a character named {targetCharName}.")
         await self.setStoryAttr(ctx, targetTitle, changeCharacter)
+    
+    @command(ignore_extra=False)
+    async def setsummary(self, ctx: Context, newSummary: str, targetTitle: str=None):
+        """ Sets the summary of the latest-added story of the issuer.
+            If targetTitle is specified, sets the summary of that story instead. """
+        
+        async def changeSummary(story: Story):
+            story.summary = newSummary
+        await self.setStoryAttr(ctx, targetTitle, changeSummary)
+    
+    @command(ignore_extra=False)
+    async def addlink(self, ctx: Context, newLinkName: str, link: str, targetTitle: str=None):
+        """ Adds a link with the given name to the latest-added story of the issuer.
+            If targetTitle is specified, adds the link to that story instead. """
+        
+        if not newLinkName in allLinkNames:
+            await dmError(ctx, f"The rating for your story must be one of {allLinkNames}, not {newLinkName}.")
+            return
+        async def changeLink(story: Story):
+            story.links[newLinkName] = link
+        await self.setStoryAttr(ctx, targetTitle, changeLink)
+    
+    @command(ignore_extra=False)
+    async def removelink(self, ctx: Context, targetLinkName: str, targetTitle: str=None):
+        """ Removes the link with the given name from the latest-added story of the issuer.
+            If targetTitle is specified, removes the link from that story instead. """
+        
+        async def changeLink(story: Story):
+            if targetLinkName in story.links:
+                story.links.pop(targetLinkName)
+            else:
+                await dmError(ctx, f"That story does not have a link with the name {targetLinkName}.")
+        await self.setStoryAttr(ctx, targetTitle, changeLink)

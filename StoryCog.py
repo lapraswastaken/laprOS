@@ -50,6 +50,7 @@ ALL_LINK_NAMES = [
 class StoryCog(Cog):
     def __init__(self, bot, channelIDs: list[int]):
         self.bot = bot
+        self.proxies: dict[int, int] = {}
         
         self.storyLinksChannelIDs = channelIDs
     
@@ -135,6 +136,11 @@ class StoryCog(Cog):
         
         content = StoryCog.allStoriesToText(author, stories)
         await message.edit(content=content)
+    
+    @command(ignore_extra=False, hidden=True)
+    async def proxyuser(self, ctx: Context, user: User):
+        
+        self.proxies[ctx.author.id] = user.id
     
     @command(ignore_extra=False)
     @cooldown(1, 10 * 60, BucketType.guild)

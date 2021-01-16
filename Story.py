@@ -60,7 +60,7 @@ class Story:
         charsRaw = getter(3)
         chars: list[Character] = []
         for left, right in charsPat.findall(charsRaw):
-            char = Character(right if right else left, right if right else None)
+            char = Character(right if right else left, left if right else None)
             chars.append(char)
         summary = []
         endSum = False

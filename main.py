@@ -15,7 +15,7 @@ from MainCog import MainCog
 
 storyLinksChannelIDs = [794355705368018954, 792629600860897330, 798023111453966347]
 
-bot = Bot(command_prefix="lap!", case_insensitive=True, help_command=DefaultHelpCommand(verify_checks=False))
+bot = Bot(command_prefix="lap.", case_insensitive=True, help_command=DefaultHelpCommand(verify_checks=False))
 mainCog = MainCog(bot)
 bot.add_cog(mainCog)
 bot.add_cog(StoryCog(bot, storyLinksChannelIDs))
@@ -45,4 +45,4 @@ async def globalCheck(ctx: Context):
     print(f"{ctx.message.author.name}: {ctx.message.content}")
     return True
 
-bot.run(os.getenv("DISCORD_SECRET_PWUBOT"))
+bot.run(os.getenv("DISCORD_SECRET_THE_ANNOUNCER"))

@@ -45,4 +45,4 @@ async def globalCheck(ctx: Context):
     print(f"{ctx.message.author.name}: {ctx.message.content}")
     return True
 
-bot.run(os.getenv("DISCORD_SECRET_THE_ANNOUNCER"))
+bot.run(os.getenv("DISCORD_SECRET_PWUBOT"))

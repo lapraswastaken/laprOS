@@ -1,4 +1,5 @@
 
+from ArchiveCog import ArchiveCog
 from discord.ext.commands.help import DefaultHelpCommand, HelpCommand
 from discord.raw_models import RawReactionActionEvent
 from StoryCog import StoryCog
@@ -18,6 +19,7 @@ bot = Bot(command_prefix="lap!", case_insensitive=True, help_command=DefaultHelp
 mainCog = MainCog(bot)
 bot.add_cog(mainCog)
 bot.add_cog(StoryCog(bot, storyLinksChannelIDs))
+bot.add_cog(ArchiveCog(bot))
 
 @bot.event
 async def on_ready():

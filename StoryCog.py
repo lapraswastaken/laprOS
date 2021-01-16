@@ -10,9 +10,10 @@ import re
 from Story import Character, Story
 
 digitsPat = re.compile(r"(\d+)")
-separator = "\n\n=====\n\n"
-allRatings = ["K", "K+", "T", "M"]
-allGenres = [
+SEPARATOR = "\n\n=====\n\n"
+
+ALL_RATINGS = ["K", "K+", "T", "M"]
+ALL_GENRES = [
     "Adventure",
     "Angst",
     "Crime",
@@ -35,12 +36,13 @@ allGenres = [
     "Tragedy",
     "Western"
 ]
-allLinkNames = [
+ALL_LINK_NAMES = [
     "AO3",
     "FFN",
-    "RR",
+    "TR",
     "DA",
-    "WP"
+    "WP",
+    "GD"
 ]
 
 class StoryCog(Cog):
@@ -101,7 +103,7 @@ class StoryCog(Cog):
         """ Creates a list of stories from a message.
             Makes the author of all created stories the targetAuthor, confirmed with StoryCog.isMessageForAuthor. """
         
-        storiesRaw = message.content.split(separator)[1:]
+        storiesRaw = message.content.split(SEPARATOR)[1:]
         
         stories: list[Story] = []
         for storyRaw in storiesRaw:
@@ -113,7 +115,7 @@ class StoryCog(Cog):
     def isMessageForAuthor(author: User, message: Message):
         """ Checks to see if the given Message mentions the given author. """
         
-        writerRaw = message.content.split(separator)[0]
+        writerRaw = message.content.split(SEPARATOR)[0]
         match = digitsPat.search(writerRaw)
         return match and int(match.group(1)) == author.id
     
@@ -122,7 +124,7 @@ class StoryCog(Cog):
         """ Creates the contents for a Message.
             Strings together the .toText() results of all Stories in the given list, prepending the author's mention tag. """
         
-        return separator.join([f"**Writer**: {author.mention}"] + [story.toText() for story in stories])
+        return SEPARATOR.join([f"**Writer**: {author.mention}"] + [story.toText() for story in stories]) + SEPARATOR
     
     @staticmethod
     async def updateMessageWithStories(author: User, message: Message, stories: list[Story]):
@@ -161,8 +163,8 @@ class StoryCog(Cog):
         """ Adds a genre to the latest-added story of the issuer.
             If targetTitle is specified, adds the genre to that story instead. """
         
-        if not newGenre.capitalize() in allGenres:
-            await dmError(ctx, f"The genre specified ({newGenre}) is not one of:\n\n" + "\n".join(allGenres))
+        if not newGenre.capitalize() in ALL_GENRES:
+            await dmError(ctx, f"The genre specified ({newGenre}) is not one of:\n\n" + "\n".join(ALL_GENRES))
             return
         
         async def changeGenre(story: Story):
@@ -190,8 +192,8 @@ class StoryCog(Cog):
         """ Sets the rating for the latest-added story of the issuer.
             If targetTitle is specified, sets the rating for that story instead. """
         
-        if not newRating in allRatings:
-            await dmError(ctx, f"The rating for your story must be one of {allRatings}, not {newRating}.")
+        if not newRating in ALL_RATINGS:
+            await dmError(ctx, f"The rating for your story must be one of {ALL_RATINGS}, not {newRating}.")
             return
         
         async def changeRating(story: Story):
@@ -249,8 +251,8 @@ class StoryCog(Cog):
         """ Adds a link with the given name to the latest-added story of the issuer.
             If targetTitle is specified, adds the link to that story instead. """
         
-        if not newLinkName in allLinkNames:
-            await dmError(ctx, f"The rating for your story must be one of {allLinkNames}, not {newLinkName}.")
+        if not newLinkName in ALL_LINK_NAMES:
+            await dmError(ctx, f"The rating for your story must be one of {ALL_LINK_NAMES}, not {newLinkName}.")
             return
         async def changeLink(story: Story):
             story.links[newLinkName] = link

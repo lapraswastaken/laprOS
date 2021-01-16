@@ -15,7 +15,7 @@ class Character:
         self.name = name
     
     def __str__(self):
-        return self.species + ((" | " + self.name) if self.name else "")
+        return (self.species if not self.name else self.name) + ((" | " + self.species) if self.name else "")
 
 class Story:
     def __init__(self, title: str, authorUser: User, genres: list[str]=[], rating: str="", ratingReason: str="", characters: list[Character]=[], summary: str="", links: dict[str, str]={}):
@@ -60,7 +60,7 @@ class Story:
         charsRaw = getter(3)
         chars: list[Character] = []
         for left, right in charsPat.findall(charsRaw):
-            char = Character(left if not right else right, right if right else None)
+            char = Character(right if right else left, right if right else None)
             chars.append(char)
         summary = []
         endSum = False

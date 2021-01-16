@@ -61,6 +61,7 @@ class StoryCog(Cog):
     
     async def cog_command_error(self, ctx: Context, error: CommandError):
         await dmError(ctx, str(error))
+        raise error
     
     async def getMessageForContext(self, ctx: Context) -> Optional[Message]:
         """ Gets the Message that mentions the Context's author. """
@@ -237,12 +238,12 @@ class StoryCog(Cog):
         await self.setStoryAttr(ctx, targetTitle, changeReason)
 
     @command(ignore_extra=False)
-    async def addcharacter(self, ctx: Context, newCharSpecies: str, newCharNickname: str=None, targetTitle: str=None):
+    async def addcharacter(self, ctx: Context, newCharSpecies: str, newCharNickname: str="", targetTitle: str=None):
         """ Adds a character with the given species and optional nickname to the latest-added story of the issuer.
             A species can be given to the character with the charSpecies parameter. If this needs to be omitted so that a speciesless character can be added to a specific story, an empty string ("") can be passed.
             If targetTitle is specified, adds a character to that story instead. """
         
-        newChar = Character(newCharNickname, newCharSpecies)
+        newChar = Character(newCharSpecies, newCharNickname)
         if "|" in newCharNickname + newCharSpecies:
             await dmError(ctx, "You cant use vertical bars in the species name or the nickname when adding a new character.")
             return
@@ -252,19 +253,19 @@ class StoryCog(Cog):
         await self.setStoryAttr(ctx, targetTitle, changeCharacter)
     
     @command(ignore_extra=False)
-    async def removecharacter(self, ctx: Context, targetCharName: str, targetTitle: str=None):
-        """ Removes a character with the given name from the latest-added story of the issuer.
+    async def removecharacter(self, ctx: Context, targetCharSpecies: str, targetTitle: str=None):
+        """ Removes a character with the given species from the latest-added story of the issuer.
             If targetTitle is specified, removes a character from that story instead. """
         
         async def changeCharacter(story: Story):
             found = None
             for char in story.characters:
-                if char.name == targetCharName:
+                if char.species == targetCharSpecies:
                     found = char
             if found:
                 story.characters.remove(found)
             else:
-                await dmError(ctx, f"That story does not have a character named {targetCharName}.")
+                await dmError(ctx, f"That story does not have a character with the species {targetCharSpecies}.")
         await self.setStoryAttr(ctx, targetTitle, changeCharacter)
     
     @command(ignore_extra=False)

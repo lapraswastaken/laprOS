@@ -10,12 +10,12 @@ charsPat = re.compile(r"\s*(.+?)(?:\s*\|\s*(.+?))?(?:,|$)")
 linkPat = re.compile(r"- (.+): <(.+)>")
 
 class Character:
-    def __init__(self, name: str, species: Optional[str]):
-        self.name = name
+    def __init__(self, species: str, name: Optional[str]):
         self.species = species
+        self.name = name
     
     def __str__(self):
-        return self.name + ((" | " + self.species) if self.species else "")
+        return self.species + ((" | " + self.name) if self.name else "")
 
 class Story:
     def __init__(self, title: str, authorUser: User, genres: list[str]=[], rating: str="", ratingReason: str="", characters: list[Character]=[], summary: str="", links: dict[str, str]={}):
@@ -59,8 +59,8 @@ class Story:
             reason = ratingRaw[1][:-1].strip()
         charsRaw = getter(3)
         chars: list[Character] = []
-        for charName, charSpecies in charsPat.findall(charsRaw):
-            char = Character(charName, charSpecies)
+        for left, right in charsPat.findall(charsRaw):
+            char = Character(left if not right else right, right if right else None)
             chars.append(char)
         summary = []
         endSum = False

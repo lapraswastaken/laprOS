@@ -1,4 +1,5 @@
 
+from sources.imageurls import LAPROS_GRAPHIC_URL
 from typing import Optional, Union
 from discord.ext.commands.context import Context
 from discord import Embed
@@ -20,7 +21,7 @@ def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[s
         )
     if imageURL:
         e.set_image(url=imageURL)
-    e.set_thumbnail(url="https://cdn.discordapp.com/attachments/284520081700945921/799416249738067978/laprOS_logo.png")
+    e.set_thumbnail(url=LAPROS_GRAPHIC_URL)
     return e
 
 async def dmError(ctx: Context, errorText: str):

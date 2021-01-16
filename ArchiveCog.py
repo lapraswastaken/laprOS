@@ -29,12 +29,12 @@ class ArchiveCog(Cog):
     
     @command()
     async def listgenres(self, ctx: Context):
-        await ctx.send("List of all genres: ```" + "\n".join(ALL_GENRES) + "```")
+        await ctx.send("List of all genres: ```\n" + "\n".join(ALL_GENRES) + "```\nIf your genre is not listed here, please let lapras (thebassethound) know.")
     
     @command()
     async def listlinknames(self, ctx: Context):
-        await ctx.send("List of all link names: ```" + "\n".join(ALL_LINK_NAMES) + "```")
+        await ctx.send("List of all link names: ```\n" + "\n".join(ALL_LINK_NAMES) + "```\nIf your link name is not listed here, please let lapras (thebassethound) know.")
     
     @command()
     async def listratings(self, ctx: Context):
-        await ctx.send("List of all ratings: ```" + "\n".join(ALL_RATINGS) + "```")
+        await ctx.send("List of all ratings: ```\n" + "\n".join(ALL_RATINGS) + "```")

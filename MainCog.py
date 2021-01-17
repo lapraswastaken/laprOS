@@ -33,7 +33,7 @@ class MainCog(commands.Cog):
         if emoji in ["🟢", "🔴"] and userID in vote[emoji]:
             vote[emoji].remove(userID)
     
-    @commands.command()
+    @commands.command(hidden=True)
     async def ping(self, ctx: commands.Context):
         """ Test command. """
         await ctx.send("Pong")

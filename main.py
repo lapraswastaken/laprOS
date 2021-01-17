@@ -1,19 +1,18 @@
 
-from ArchiveCog import ArchiveCog
 import discord
 from discord.ext import commands
-from discordUtils import dmError
-from MainCog import MainCog
+from discordUtils import ARCHIVE_CHANNEL_IDS, dmError
 import os
-from StoryCog import StoryCog
 from typing import Union
 
-storyLinksChannelIDs = [794355705368018954, 792629600860897330, 798023111453966347]
+from ArchiveCog import ArchiveCog
+from MainCog import MainCog
+from StoryCog import StoryCog
 
 bot = commands.Bot(command_prefix="lap.", case_insensitive=True, help_command=commands.DefaultHelpCommand(verify_checks=False))
 mainCog = MainCog(bot)
 bot.add_cog(mainCog)
-bot.add_cog(StoryCog(bot, storyLinksChannelIDs))
+bot.add_cog(StoryCog(bot))
 bot.add_cog(ArchiveCog(bot))
 
 @bot.event
@@ -30,7 +29,7 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
 
 @bot.event
 async def on_message(message: discord.Message):
-    if message.channel.id in storyLinksChannelIDs:
+    if message.channel.id in ARCHIVE_CHANNEL_IDS.values():
         if not (message.author.id == bot.user.id and message.content.startswith("**Writer**:")):
             await message.delete()
     await bot.process_commands(message)
@@ -45,6 +44,8 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
         await dmError(ctx, "This command doesn't exist!")
     elif isinstance(error, commands.CommandOnCooldown):
         await dmError(ctx, f"This command is on cooldown right now. Please wait {int(error.retry_after)} seconds and try again.")
+        return
+    elif isinstance(error, commands.CheckFailure):
         return
     else:
         await dmError(ctx, "An unexpected error occurred. Please let @lapras know.")

@@ -2,7 +2,7 @@
 from typing import Callable, Optional, Union
 import discord
 from discord.ext import commands
-from discordUtils import dmError, moderatorCheck
+from discordUtils import ARCHIVE_CHANNEL_IDS, dmError, moderatorCheck
 import re
 from Story import Character, Story
 
@@ -44,14 +44,12 @@ ALL_LINK_NAMES = {
 }
 
 class StoryCog(commands.Cog):
-    def __init__(self, bot, channelIDs: list[int]):
+    def __init__(self, bot):
         self.bot = bot
         self.proxies: dict[int, discord.Member] = {}
-        
-        self.storyLinksChannelIDs = channelIDs
     
     async def cog_check(self, ctx: commands.Context):
-        if not ctx.channel.id in self.storyLinksChannelIDs:
+        if not ctx.channel.id in ARCHIVE_CHANNEL_IDS.values():
             await ctx.send(content="This part of the bot can only be used in the channel that hosts story links.")
             return False
         return True
@@ -76,7 +74,7 @@ class StoryCog(commands.Cog):
             await dmError(ctx, "There are no story link posts created for you. Use .newstory to add a new story link post.")
             return
         
-        stories = StoryCog.getStoriesFromMessage(foundMessage, ctx.author)
+        stories = await StoryCog.getStoriesFromMessage(foundMessage)
         
         targetStory = None
         if stories and not targetTitle:
@@ -95,9 +93,13 @@ class StoryCog(commands.Cog):
         await self.updateMessageWithStories(ctx.author, foundMessage, stories)
     
     @staticmethod
-    def getStoriesFromMessage(message: discord.Message, targetAuthor: discord.Member) -> list[Story]:
+    async def getStoriesFromMessage(message: discord.Message) -> list[Story]:
         """ Creates a list of stories from a message.
             Makes the author of all created stories the targetAuthor, confirmed with StoryCog.isMessageForAuthor. """
+        
+        authorID = StoryCog.getAuthorIDFromMessage(message)
+        targetAuthor = await message.guild.fetch_member(authorID)
+        print(authorID)
         
         storiesRaw = message.content.split(SEPARATOR)[1:]
         
@@ -106,14 +108,19 @@ class StoryCog(commands.Cog):
             story = Story.newFromText(targetAuthor, storyRaw)
             stories.append(story)
         return stories
+    
+    @staticmethod
+    def getAuthorIDFromMessage(message: discord.Message):
+        writerRaw = message.content.split(SEPARATOR)[0]
+        match = digitsPat.search(writerRaw)
+        if not match: return None
+        return int(match.group(1))
         
     def isMessageForAuthor(self, author: discord.Member, message: discord.Message):
         """ Checks to see if the given Message mentions the given author. """
         
-        writerRaw = message.content.split(SEPARATOR)[0]
-        match = digitsPat.search(writerRaw)
         targetID = author.id if not author.id in self.proxies else self.proxies[author.id].id
-        return match and int(match.group(1)) == targetID
+        return StoryCog.getAuthorIDFromMessage(message) == targetID
     
     @staticmethod
     def allStoriesToText(author: discord.Member, stories: list[Story]):
@@ -136,7 +143,7 @@ class StoryCog(commands.Cog):
         if isinstance(member, discord.Member):
             self.proxies[ctx.author.id] = member
         else:
-            self.proxies[ctx.author.id] = await ctx.guild.fetch_member(member)
+            self.proxies[ctx.author.id] = await ctx.guild.get_member(member)
     
     @commands.command(ignore_extra=False, hidden=True)
     @commands.check(moderatorCheck)
@@ -157,7 +164,7 @@ class StoryCog(commands.Cog):
             await ctx.send(StoryCog.allStoriesToText(ctx.author, [story]))
             return
         
-        stories = StoryCog.getStoriesFromMessage(foundMessage, ctx.author)
+        stories = await StoryCog.getStoriesFromMessage(foundMessage)
         if storyTitle in [story.title for story in stories]:
             await dmError(ctx, "You've already got a story with that name!")
             return
@@ -166,12 +173,13 @@ class StoryCog(commands.Cog):
     
     @commands.command(ignore_extra=False)
     async def removestory(self, ctx: commands.Context, targetTitle: str):
+        """ Removes the story with the given title. """
         
         foundMessage = await self.getMessageForContext(ctx)
         if not foundMessage:
             await dmError(ctx, "You haven't added any stories to remove!")
             return
-        stories = StoryCog.getStoriesFromMessage(foundMessage, ctx.author)
+        stories = await StoryCog.getStoriesFromMessage(foundMessage)
         
         found = None
         for story in stories:

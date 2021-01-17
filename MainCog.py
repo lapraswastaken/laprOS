@@ -1,19 +1,15 @@
 
-from typing import Optional, Union
-from discord.partial_emoji import PartialEmoji
-from discord.user import User
-from discord.ext.commands import Cog, command
-from discord.ext.commands.context import Context
-from discord.member import Member
-from discord.reaction import Reaction
+from typing import Union
+import discord
+from discord.ext import commands
 
-class MainCog(Cog):
+class MainCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         
         self.votes: dict[int, dict[str, list[int]]] = {}
     
-    async def handleVoteAdd(self, reaction: Reaction, user: Union[Member, User]):
+    async def handleVoteAdd(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
         vote = self.votes.get(reaction.message.id)
         if not vote: return
         
@@ -26,7 +22,7 @@ class MainCog(Cog):
         else:
             vote[emoji].append(user.id)
     
-    async def handleVoteRemove(self, messageID: int, emoji: PartialEmoji, userID: int):
+    async def handleVoteRemove(self, messageID: int, emoji: discord.PartialEmoji, userID: int):
         vote = self.votes.get(messageID)
         #print(vote)
         if not vote: return
@@ -36,12 +32,13 @@ class MainCog(Cog):
         if emoji in ["🟢", "🔴"] and userID in vote[emoji]:
             vote[emoji].remove(userID)
     
-    @command()
-    async def ping(self, ctx: Context):
+    @commands.command()
+    async def ping(self, ctx: commands.Context):
+        """ Test command. """
         await ctx.send("Pong")
     
-    @command()
-    async def vote(self, ctx: Context):
+    @commands.command()
+    async def vote(self, ctx: commands.Context):
         """ Starts a vote on the command's message. """
         await ctx.message.add_reaction("🟢")
         await ctx.message.add_reaction("🔴")
@@ -50,13 +47,8 @@ class MainCog(Cog):
             "🔴": []
         }
     
-    #@command()
-    #async def pog(self, ctx: Context):
-    #    if ctx.guild.id == 546872429621018635:
-    #        pass
-    
-    @command(hidden=True)
-    async def engineer(self, ctx: Context, gaming: str=None):
+    @commands.command(hidden=True)
+    async def engineer(self, ctx: commands.Context, gaming: str=None):
         if not gaming == "gaming":
             await ctx.send("Engineer *what now?*")
         else:

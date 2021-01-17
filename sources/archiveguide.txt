@@ -1,4 +1,6 @@
-This embed will tell you how to set up a story in my archive.
+This embed will tell you how to set up a story in story-links.
+
+All of these commands must happen in the story-links channel - they won't work anywhere else.
 
 To start, use the `lap.addstory` command to add a new story, and give it your story's name in quotes.
 ```lap.addstory "Null Protocol"```

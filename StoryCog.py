@@ -1,13 +1,8 @@
 
-from typing import Callable, Optional
-from discord.ext.commands.cooldowns import BucketType
-from discord.ext.commands.core import cooldown
-from discord.ext.commands.errors import CommandError
-from discord.message import Message
-from discord.ext.commands import Cog, command
-from discord.ext.commands.context import Context
-from discord.user import User
-from discordUtils import dmError
+from typing import Callable, Optional, Union
+import discord
+from discord.ext import commands
+from discordUtils import dmError, moderatorCheck
 import re
 from Story import Character, Story
 
@@ -38,45 +33,42 @@ ALL_GENRES = [
     "Tragedy",
     "Western"
 ]
-ALL_LINK_NAMES = [
-    "AO3",
-    "FFN",
-    "TR",
-    "DA",
-    "WP",
-    "GD"
-]
+ALL_LINK_NAMES = {
+    "AO3": "Archive Of Our Own",
+    "FFN": "FanFiction.Net",
+    "TR": "Thousand Roads",
+    "RR": "Royal Road",
+    "DA": "Deviant Art",
+    "WP": "WattPad",
+    "GD": "Google Docs"
+}
 
-class StoryCog(Cog):
+class StoryCog(commands.Cog):
     def __init__(self, bot, channelIDs: list[int]):
         self.bot = bot
-        self.proxies: dict[int, int] = {}
+        self.proxies: dict[int, discord.Member] = {}
         
         self.storyLinksChannelIDs = channelIDs
     
-    async def cog_check(self, ctx: Context):
+    async def cog_check(self, ctx: commands.Context):
         if not ctx.channel.id in self.storyLinksChannelIDs:
             await ctx.send(content="This part of the bot can only be used in the channel that hosts story links.")
             return False
         return True
     
-    async def cog_command_error(self, ctx: Context, error: CommandError):
-        await dmError(ctx, str(error))
-        raise error
-    
-    async def getMessageForContext(self, ctx: Context) -> Optional[Message]:
+    async def getMessageForContext(self, ctx: commands.Context) -> Optional[discord.Message]:
         """ Gets the Message that mentions the Context's author. """
         
-        foundMessage: Optional[Message] = None
+        foundMessage: Optional[discord.Message] = None
         async for message in ctx.channel.history():
             if message.author.id != self.bot.user.id:
                 continue
-            if StoryCog.isMessageForAuthor(ctx.author, message):
+            if self.isMessageForAuthor(ctx.author, message):
                 foundMessage = message
                 break
         return foundMessage
     
-    async def setStoryAttr(self, ctx: Context, targetTitle: Optional[str], changeCallback: Callable[[Story], None]):
+    async def setStoryAttr(self, ctx: commands.Context, targetTitle: Optional[str], changeCallback: Callable[[Story], None]):
         """ Finds the Story with the given title and performs the changeCallback on it. """
         
         foundMessage = await self.getMessageForContext(ctx)
@@ -100,10 +92,10 @@ class StoryCog(Cog):
         
         await changeCallback(targetStory)
         
-        await StoryCog.updateMessageWithStories(ctx.author, foundMessage, stories)
+        await self.updateMessageWithStories(ctx.author, foundMessage, stories)
     
     @staticmethod
-    def getStoriesFromMessage(message: Message, targetAuthor: User) -> list[Story]:
+    def getStoriesFromMessage(message: discord.Message, targetAuthor: discord.Member) -> list[Story]:
         """ Creates a list of stories from a message.
             Makes the author of all created stories the targetAuthor, confirmed with StoryCog.isMessageForAuthor. """
         
@@ -115,36 +107,46 @@ class StoryCog(Cog):
             stories.append(story)
         return stories
         
-    @staticmethod
-    def isMessageForAuthor(author: User, message: Message):
+    def isMessageForAuthor(self, author: discord.Member, message: discord.Message):
         """ Checks to see if the given Message mentions the given author. """
         
         writerRaw = message.content.split(SEPARATOR)[0]
         match = digitsPat.search(writerRaw)
-        return match and int(match.group(1)) == author.id
+        targetID = author.id if not author.id in self.proxies else self.proxies[author.id].id
+        return match and int(match.group(1)) == targetID
     
     @staticmethod
-    def allStoriesToText(author: User, stories: list[Story]):
+    def allStoriesToText(author: discord.Member, stories: list[Story]):
         """ Creates the contents for a Message.
             Strings together the .toText() results of all Stories in the given list, prepending the author's mention tag. """
         
         return SEPARATOR.join([f"**Writer**: {author.mention}"] + [story.toText() for story in stories]) + SEPARATOR
     
-    @staticmethod
-    async def updateMessageWithStories(author: User, message: Message, stories: list[Story]):
+    async def updateMessageWithStories(self, author: discord.Member, message: discord.Message, stories: list[Story]):
         """ Updates a given Message's contents with the allStoriesToText method's result. """
         
+        if author.id in self.proxies:
+            author = self.proxies[author.id]
         content = StoryCog.allStoriesToText(author, stories)
         await message.edit(content=content)
     
-    @command(ignore_extra=False, hidden=True)
-    async def proxyuser(self, ctx: Context, user: User):
-        
-        self.proxies[ctx.author.id] = user.id
+    @commands.command(ignore_extra=False, hidden=True)
+    @commands.check(moderatorCheck)
+    async def proxyuser(self, ctx: commands.Context, member: Union[discord.Member, int]):
+        if isinstance(member, discord.Member):
+            self.proxies[ctx.author.id] = member
+        else:
+            self.proxies[ctx.author.id] = await ctx.guild.fetch_member(member)
     
-    @command(ignore_extra=False)
-    @cooldown(1, 10 * 60, BucketType.guild)
-    async def addstory(self, ctx: Context, storyTitle: str):
+    @commands.command(ignore_extra=False, hidden=True)
+    @commands.check(moderatorCheck)
+    async def clearproxy(self, ctx: commands.Context):
+        if ctx.author.id in self.proxies:
+            self.proxies.pop(ctx.author.id)
+    
+    @commands.command(ignore_extra=False)
+    @commands.cooldown(1, 8 * 60, commands.BucketType.guild)
+    async def addstory(self, ctx: commands.Context, storyTitle: str):
         """ Adds a new story with the given title to the story links post for the command issuer.
             If no such post exist, creates one. 
             All other values except for title are left blank and must be altered with their respective .set commands. """
@@ -160,10 +162,10 @@ class StoryCog(Cog):
             await dmError(ctx, "You've already got a story with that name!")
             return
         stories.append(Story(storyTitle, ctx.author))
-        await StoryCog.updateMessageWithStories(ctx.author, foundMessage, stories)
+        await self.updateMessageWithStories(ctx.author, foundMessage, stories)
     
-    @command(ignore_extra=False)
-    async def removestory(self, ctx: Context, targetTitle: str):
+    @commands.command(ignore_extra=False)
+    async def removestory(self, ctx: commands.Context, targetTitle: str):
         
         foundMessage = await self.getMessageForContext(ctx)
         if not foundMessage:
@@ -179,10 +181,10 @@ class StoryCog(Cog):
         if not found:
             await dmError(ctx, f"Couldn't find a story to remove with the name {targetTitle}.")
         stories.remove(found)
-        await StoryCog.updateMessageWithStories(ctx.author, foundMessage, stories)
+        await self.updateMessageWithStories(ctx.author, foundMessage, stories)
     
-    @command(ignore_extra=False)
-    async def settitle(self, ctx: Context, newTitle: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def settitle(self, ctx: commands.Context, newTitle: str, targetTitle: str=None):
         """ Sets the title of the latest-added story of the issuer.
             if targetTitle is specified, sets the title of that story instead (this is somewhat unintuitive - the first parameter is still the new name of the story). """
             
@@ -190,8 +192,8 @@ class StoryCog(Cog):
             story.title = newTitle
         await self.setStoryAttr(ctx, targetTitle, changeTitle)
 
-    @command(ignore_extra=False)
-    async def addgenre(self, ctx: Context, newGenre: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def addgenre(self, ctx: commands.Context, newGenre: str, targetTitle: str=None):
         """ Adds a genre to the latest-added story of the issuer.
             If targetTitle is specified, adds the genre to that story instead. """
         
@@ -205,8 +207,8 @@ class StoryCog(Cog):
             story.genres.append(newGenre.capitalize())
         await self.setStoryAttr(ctx, targetTitle, changeGenre)
     
-    @command(ignore_extra=False)
-    async def removegenre(self, ctx: Context, targetGenre: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def removegenre(self, ctx: commands.Context, targetGenre: str, targetTitle: str=None):
         """ Removes the specified genre from the latest-added story of the issuer.
             If targetTitle is specified, removes the genre from that story instead. """
         
@@ -221,8 +223,8 @@ class StoryCog(Cog):
                 await dmError(ctx, f"That story does not have a genre called {targetGenre}.")
         await self.setStoryAttr(ctx, targetTitle, changeGenre)
     
-    @command(ignore_extra=False)
-    async def setrating(self, ctx: Context, newRating: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def setrating(self, ctx: commands.Context, newRating: str, targetTitle: str=None):
         """ Sets the rating for the latest-added story of the issuer.
             If targetTitle is specified, sets the rating for that story instead. """
         
@@ -234,8 +236,8 @@ class StoryCog(Cog):
             story.rating = newRating
         await self.setStoryAttr(ctx, targetTitle, changeRating)
     
-    @command(ignore_extra=False)
-    async def setratingreason(self, ctx: Context, newReason: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def setratingreason(self, ctx: commands.Context, newReason: str, targetTitle: str=None):
         """ Sets the rating reason for the latest-added story of the issuer.
             If targetTitle is specified, sets the rating reason for that story instead. """
         
@@ -243,8 +245,8 @@ class StoryCog(Cog):
             story.ratingReason = newReason
         await self.setStoryAttr(ctx, targetTitle, changeReason)
 
-    @command(ignore_extra=False)
-    async def addcharacter(self, ctx: Context, newCharSpecies: str, newCharNickname: str="", targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def addcharacter(self, ctx: commands.Context, newCharSpecies: str, newCharNickname: str="", targetTitle: str=None):
         """ Adds a character with the given species and optional nickname to the latest-added story of the issuer.
             A species can be given to the character with the charSpecies parameter. If this needs to be omitted so that a speciesless character can be added to a specific story, an empty string ("") can be passed.
             If targetTitle is specified, adds a character to that story instead. """
@@ -258,8 +260,8 @@ class StoryCog(Cog):
             story.characters.append(newChar)
         await self.setStoryAttr(ctx, targetTitle, changeCharacter)
     
-    @command(ignore_extra=False)
-    async def removecharacter(self, ctx: Context, targetCharSpecies: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def removecharacter(self, ctx: commands.Context, targetCharSpecies: str, targetTitle: str=None):
         """ Removes a character with the given species from the latest-added story of the issuer.
             If targetTitle is specified, removes a character from that story instead. """
         
@@ -274,8 +276,8 @@ class StoryCog(Cog):
                 await dmError(ctx, f"That story does not have a character with the species {targetCharSpecies}.")
         await self.setStoryAttr(ctx, targetTitle, changeCharacter)
     
-    @command(ignore_extra=False)
-    async def setsummary(self, ctx: Context, newSummary: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def setsummary(self, ctx: commands.Context, newSummary: str, targetTitle: str=None):
         """ Sets the summary of the latest-added story of the issuer.
             If targetTitle is specified, sets the summary of that story instead. """
         
@@ -286,20 +288,20 @@ class StoryCog(Cog):
             story.summary = newSummary
         await self.setStoryAttr(ctx, targetTitle, changeSummary)
     
-    @command(ignore_extra=False)
-    async def addlink(self, ctx: Context, newLinkName: str, link: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def addlink(self, ctx: commands.Context, newLinkName: str, link: str, targetTitle: str=None):
         """ Adds a link with the given name to the latest-added story of the issuer.
             If targetTitle is specified, adds the link to that story instead. """
         
         if not newLinkName in ALL_LINK_NAMES:
-            await dmError(ctx, f"The rating for your story must be one of {ALL_LINK_NAMES}, not {newLinkName}.")
+            await dmError(ctx, f"The rating for your story must be one of {ALL_LINK_NAMES.values()}, not {newLinkName}.")
             return
         async def changeLink(story: Story):
             story.links[newLinkName] = link
         await self.setStoryAttr(ctx, targetTitle, changeLink)
     
-    @command(ignore_extra=False)
-    async def removelink(self, ctx: Context, targetLinkName: str, targetTitle: str=None):
+    @commands.command(ignore_extra=False)
+    async def removelink(self, ctx: commands.Context, targetLinkName: str, targetTitle: str=None):
         """ Removes the link with the given name from the latest-added story of the issuer.
             If targetTitle is specified, removes the link from that story instead. """
         

@@ -1,8 +1,7 @@
 
 
 from typing import Optional
-from discord.message import Message
-from discord.user import User
+import discord
 import re
 
 ratingPat = re.compile(r"(.+?)(?:\s*\((.+)\))?")
@@ -18,9 +17,9 @@ class Character:
         return (self.species if not self.name else self.name) + ((" | " + self.species) if self.name else "")
 
 class Story:
-    def __init__(self, title: str, authorUser: User, genres: list[str]=[], rating: str="", ratingReason: str="", characters: list[Character]=[], summary: str="", links: dict[str, str]={}):
+    def __init__(self, title: str, author: discord.Member, genres: list[str]=[], rating: str="", ratingReason: str="", characters: list[Character]=[], summary: str="", links: dict[str, str]={}):
         self.title = title
-        self.authorUser = authorUser
+        self.author = author
         
         self.genres = genres
         self.rating = rating
@@ -30,7 +29,7 @@ class Story:
         self.links = links
     
     def __str__(self):
-        return f"Title: {self.title}\nAuthor ID: {self.authorUser.id}\nGenres: {self.genres}\nRating: {self.rating}\nReason: {self.ratingReason}\nCharacters: {self.characters}\nSummary: {self.summary}\nLinks: {self.links}"
+        return f"Title: {self.title}\nAuthor ID: {self.author.id}\nGenres: {self.genres}\nRating: {self.rating}\nReason: {self.ratingReason}\nCharacters: {self.characters}\nSummary: {self.summary}\nLinks: {self.links}"
     
     def toText(self):
         genresStr = ", ".join(self.genres)
@@ -47,7 +46,7 @@ class Story:
             f"**Links**:\n{linksStr}"
     
     @staticmethod
-    def newFromText(writerUser: User, text: str):
+    def newFromText(author: discord.Member, text: str):
         lines = text.split("\n")
         getter = lambda i: lines[i].split(":", 1)[1].strip()
         title = getter(0)
@@ -82,4 +81,4 @@ class Story:
                 links[linksMatch.group(1)] = linksMatch.group(2)
             i += 1
         
-        return Story(title, writerUser, genres, rating, reason, chars, summary, links)
+        return Story(title, author, genres, rating, reason, chars, summary, links)

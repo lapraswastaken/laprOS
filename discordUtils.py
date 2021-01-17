@@ -26,4 +26,8 @@ def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[s
 
 async def dmError(ctx: Context, errorText: str):
     """ Sends a message to the author of a command that encountered an error. """
-    await ctx.author.send(f"There was an error with your command `{ctx.message.content}` in the channel {ctx.channel.name} (<{ctx.message.jump_url}>):\n```md\n{errorText}\n```")
+    await ctx.author.send(f"There was an error with your command `{ctx.message.content}` in the channel #{ctx.channel.name}:\n```\n{errorText}\n```")
+
+def moderatorCheck(ctx: Context):
+    
+    return 550518609714348034 in [role.id for role in ctx.author.roles] or ctx.guild.id == 798023066718175252

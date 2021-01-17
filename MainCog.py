@@ -2,6 +2,7 @@
 from typing import Union
 import discord
 from discord.ext import commands
+import random
 
 class MainCog(commands.Cog):
     def __init__(self, bot):
@@ -53,3 +54,8 @@ class MainCog(commands.Cog):
             await ctx.send("Engineer *what now?*")
         else:
             await ctx.send("engineer gaming")
+    
+    @commands.command()
+    async def coinflip(self, ctx: commands.Context):
+        """ Performs a coinflip, heads or tails. """
+        await ctx.send("Heads!" if random.randint(0, 1) else "Tails!")

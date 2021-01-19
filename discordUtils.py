@@ -9,15 +9,6 @@ from typing import Optional, Union
 LAPROS_GRAPHIC_URL = "https://cdn.discordapp.com/attachments/284520081700945921/799416249738067978/laprOS_logo.png"
 BOT_IDS = [768554429305061387, 785222129061986304]
 
-with open("./sources/archives.json", "r") as f:
-    ARCHIVE_CHANNEL_IDS: dict[str, int] = {}
-    loaded = json.loads(f.read())
-    for channelIDstr in loaded:
-        ARCHIVE_CHANNEL_IDS[int(channelIDstr)] = loaded[channelIDstr]
-
-def getArchiveChannelForContext(ctx: commands.Context):
-    return ctx.guild.get_channel(ARCHIVE_CHANNEL_IDS[ctx.guild.id])
-
 def checkIsBotID(id: int):
     return id in BOT_IDS
 

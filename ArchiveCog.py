@@ -1,9 +1,10 @@
 
+from Archive import OVERARCH
 from typing import Union
 from Story import Story
 import json
 import random
-from discordUtils import ARCHIVE_CHANNEL_IDS, checkIsBotID, dmError, getArchiveChannelForContext, getLaprOSEmbed, moderatorCheck
+from discordUtils import getLaprOSEmbed, moderatorCheck
 import discord
 from discord.ext import commands
 from StoryCog import ALL_GENRES, ALL_LINK_NAMES, ALL_RATINGS, StoryCog
@@ -12,8 +13,6 @@ with open("./sources/archiveguide.txt", "r") as f:
     TEXT_ARCHIVE_GUIDE = f.read()
 
 class ArchiveCog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
     
     @staticmethod
     def getStoryEmbed(story: Story, message: discord.Message):
@@ -36,9 +35,8 @@ class ArchiveCog(commands.Cog):
     async def setarchivechannel(self, ctx: commands.Context, channel: discord.TextChannel):
         """ Sets the archive channel for this server. """
         
-        ARCHIVE_CHANNEL_IDS[ctx.guild.id] = channel.id
-        with open("./sources/archives.json", "w") as f:
-            f.write(json.dumps(ARCHIVE_CHANNEL_IDS))
+        OVERARCH.addArchive(ctx.guild.id, channel.id)
+        OVERARCH.write()
 
     @commands.command()
     async def archiveguide(self, ctx: commands.Context):

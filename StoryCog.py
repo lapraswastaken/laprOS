@@ -1,11 +1,11 @@
 
-from Archive import ALL_GENRES, ALL_LINK_NAMES, ALL_RATINGS, OVERARCH
-from typing import Callable, Optional, Union
+from Archive import ALL_GENRES, ALL_LINK_NAMES, ALL_RATINGS, DuplicateException, OVERARCH, Post
+from typing import Union
 import discord
 from discord.ext import commands
-from discordUtils import ARCHIVE_CHANNEL_IDS, checkIsBotID, dmError, moderatorCheck
+from discordUtils import dmError, moderatorCheck
 import re
-from Story import Character, Story
+from Archive import Character, Story
 
 digitsPat = re.compile(r"(\d+)")
 SEPARATOR = "\n\n=====\n\n"
@@ -15,7 +15,7 @@ class StoryCog(commands.Cog):
         self.proxies: dict[int, discord.Member] = {}
     
     async def cog_check(self, ctx: commands.Context):
-        if not ctx.channel.id in ARCHIVE_CHANNEL_IDS.values():
+        if not OVERARCH.isValidChannelID(ctx.channel.id):
             await ctx.send(content="This part of the bot can only be used in the channel that hosts story links.")
             return False
         return True
@@ -25,16 +25,55 @@ class StoryCog(commands.Cog):
             return author
         return await author.guild.fetch_member(self.proxies[author.id].id)
     
-    async def updateArchivePost(self, author: discord.Member):
-        """ Updates a given Message's contents with the allStoriesToText method's result. """
+    @staticmethod
+    async def updateArchivePost(archiveChannel: discord.TextChannel, post: Post):
+        """ Updates the messages in a give archive text channel that make up a given post. """
         
-        author = await self.checkIsProxied(author)
-        archive = OVERARCH.getArchive(author.guild.id)
-        archiveChannel: discord.TextChannel = await author.guild.fetch_channel(archive.channelID)
-        post = archive.getPost(author.id)
-        messages = []
+        # fetch each message in the post's message ids
+        messages: list[discord.Message] = []
         for messageID in post.messageIDs:
-            messages.append(await archiveChannel.fetch_message(messageID))
+            try:
+                messages.append(await archiveChannel.fetch_message(messageID))
+            except discord.NotFound:
+                post.messageIDs = []
+                break
+        
+        if not messages:
+            newMessage: discord.Message = await archiveChannel.send("*Hold on...*")
+            messages.append(newMessage)
+            post.messageIDs.append(newMessage.id)
+        
+        # begin to build the text to go into the first message
+        postText = f"**Writer**: <@{post.authorID}>\n\n=====\n\n"
+        for story in post.stories:
+            # get the discord-formatted story text
+            storyText = story.format()
+            # if we can append the story text,
+            if not len(storyText + postText) > 1800:
+                # append the story text
+                postText += storyText
+            else:
+                # otherwise, pop the earliest message off the list of the ones collected
+                toEdit = messages.pop(0)
+                # give it the content
+                # if there are no remaining messages, we need to create a new one
+                #  so that there is somewhere to put the remaining text after the loop
+                if len(messages) == 0:
+                    # create a new message
+                    newMessage: discord.Message = await archiveChannel.send("*Hold on...*")
+                    # add it to the list of messages
+                    messages.append(newMessage)
+                    # add it to the list of IDs
+                    post.messageIDs.append(newMessage.id)
+                postText += f"\n(Continued at <{messages[0].jump_url}>)"
+                await toEdit.edit(content=postText)
+                # give the jump link to the starting text for the next message
+                postText = f"**Writer**: <@{post.authorID}>\n(Continued from <{toEdit.jump_url}>)\n\n=====\n\n" + storyText
+        # add the remaining text to the last post in the messages
+        await messages.pop(0).edit(content=postText)
+        # if there are more messages after this one, delete them
+        for remainingMessage in messages:
+            await remainingMessage.delete()
         
     
     @commands.command(ignore_extra=False, hidden=True)
@@ -52,25 +91,29 @@ class StoryCog(commands.Cog):
             self.proxies.pop(ctx.author.id)
     
     @commands.command(ignore_extra=False)
-    @commands.cooldown(1, 8 * 60, commands.BucketType.guild)
+    #@commands.cooldown(1, 8 * 60, commands.BucketType.guild)
     async def addstory(self, ctx: commands.Context, storyTitle: str):
         """ Adds a new story with the given title to the story links post for the command issuer.
             If no such post exists, creates one. 
             All other values except for title are left blank and must be altered with their respective .set commands. """
         
-        foundMessage = await StoryCog.getMessageForAuthor(ctx.channel, ctx.author)
-        if not foundMessage:
-            story = Story(storyTitle, ctx.author)
-            await ctx.send(StoryCog.allStoriesToText(ctx.author, [story]))
+        author = await self.checkIsProxied(ctx.author)
+        archive = OVERARCH.getArchive(author.guild.id)
+        if not archive:
+            await dmError(ctx, "This server does not have an archive channel set up. Ask a server moderator to use the `setarchivechannel` command.")
             return
+        post = archive.getPost(author.id)
+        if not post:
+            post = archive.createPost(author.id)
         
-        stories = await StoryCog.getStoriesFromMessage(foundMessage)
-        if storyTitle in [story.title for story in stories]:
-            await dmError(ctx, "You've already got a story with that name!")
-            ctx.command.reset_cooldown(ctx)
+        newStory = Story(storyTitle)
+        try:
+            post.addStory(newStory)
+        except DuplicateException:
+            await dmError(ctx, "This command would create a story with a duplicate name!")
             return
-        stories.append(Story(storyTitle, ctx.author))
-        await self.updateMessageWithStories(ctx.author, foundMessage, stories)
+        OVERARCH.write()
+        await StoryCog.updateArchivePost(ctx.channel, post)
     
     @commands.command(ignore_extra=False)
     async def removestory(self, ctx: commands.Context, targetTitle: str):

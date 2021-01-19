@@ -1,7 +1,8 @@
 
+from Archive import OVERARCH
 import discord
 from discord.ext import commands
-from discordUtils import ARCHIVE_CHANNEL_IDS, dmError
+from discordUtils import dmError
 import os
 import time
 from typing import Union
@@ -17,8 +18,8 @@ bot = commands.Bot(
 )
 mainCog = MainCog(bot)
 bot.add_cog(mainCog)
-bot.add_cog(StoryCog(bot))
-bot.add_cog(ArchiveCog(bot))
+bot.add_cog(StoryCog())
+bot.add_cog(ArchiveCog())
 
 @bot.event
 async def on_ready():
@@ -34,8 +35,8 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
 
 @bot.event
 async def on_message(message: discord.Message):
-    if message.channel.id in ARCHIVE_CHANNEL_IDS.values():
-        if not (message.author.id == bot.user.id and message.content.startswith("**Writer**:")):
+    if OVERARCH.isValidChannelID(message.channel.id):
+        if not (message.author.id == bot.user.id and (message.content.startswith("**Writer**:") or message.content.startswith("*Hold on...*"))):
             await message.delete(delay=0.3)
     await bot.process_commands(message)
     
@@ -56,6 +57,10 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
         await dmError(ctx, "An unexpected error occurred. Please let @lapras know.")
         raise error
     ctx.command.reset_cooldown(ctx)
+
+@bot.event
+async def on_disconnect():
+    OVERARCH.write()
 
 @bot.check
 async def globalCheck(ctx: commands.Context):

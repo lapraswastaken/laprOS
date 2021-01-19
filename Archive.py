@@ -106,9 +106,9 @@ class Story(Prioritied):
         ratingStr = self.rating
         if self.ratingReason:
             ratingStr += f" ({self.ratingReason})"
-        charsStr = ", ".join([char.format() for char in sorted(self.characters, Prioritied.key)])
+        charsStr = ", ".join([char.format() for char in sorted(self.characters, key=Prioritied.key)])
         summaryStr = f"```\n{self.summary}\n```" if self.summary else ""
-        linksStr = "\n".join([f"- {link.siteAbbr}: <{link.url}>" for link in sorted(self.links, Prioritied.key)])
+        linksStr = "\n".join([f"- {link.siteAbbr}: <{link.url}>" for link in sorted(self.links, key=Prioritied.key)])
         
         return "" + \
             f"**Title**: {self.title}\n" + \
@@ -192,10 +192,10 @@ class Story(Prioritied):
         self.links.remove(fetched)
 
 class Post:
-    def __init__(self, authorID: int, messageIDs: list[int], stories: list[Story]=[]):
+    def __init__(self, authorID: int):
         self.authorID = authorID
-        self.messageIDs = messageIDs
-        self.stories = stories
+        self.messageIDs: list[int] = []
+        self.stories: list[Story] = []
     
     def addStory(self, newStory: Story):
         if newStory.title in [story.title for story in self.stories]:
@@ -203,19 +203,18 @@ class Post:
         self.stories.append(newStory)
 
 class Archive:
-    def __init__(self, channelID: int, posts: dict[int, Post]={}):
+    def __init__(self, channelID: int):
         self.channelID = channelID
-        self.posts = posts
+        self.posts: dict[int, Post] = {}
     
-    def createPost(self, authorID: int, messageID: int):
+    def createPost(self, authorID: int):
         if authorID in self.posts:
             raise DuplicateException()
-        self.posts[authorID] = Post(authorID, messageID)
+        self.posts[authorID] = Post(authorID)
+        return self.posts[authorID]
     
     def getPost(self, authorID: int):
-        if not authorID in self.posts:
-            raise NotFoundException()
-        return self.posts[authorID]
+        return self.posts.get(authorID)
 
 class OverArch:
     def __init__(self, archives: dict[int, Archive]={}):
@@ -223,23 +222,26 @@ class OverArch:
     
     @staticmethod
     def read():
-        with open("./sources/overarch.p", "r") as f:
+        with open("./sources/overarch.p", "rb") as f:
             return pickle.load(f)
     
     def write(self):
-        with open("./sources/overarch.p", "w") as f:
+        with open("./sources/overarch.p", "wb") as f:
             pickle.dump(self, f)
         
     def addArchive(self, guildID: int, channelID: int):
         if guildID in self.archives:
             raise DuplicateException()
         self.archives[guildID] = Archive(channelID)
+        return self.archives[guildID]
     
     def getArchive(self, guildID):
-        if not guildID in self.archives:
-            raise NotFoundException()
-        return self.archives[guildID]
+        return self.archives.get(guildID)
+    
+    def isValidChannelID(self, channelID: int):
+        return channelID in [archive.channelID for archive in self.archives.values()]
 
 OVERARCH = OverArch.read()
 if not OVERARCH:
     OVERARCH = OverArch()
+    OVERARCH.write()

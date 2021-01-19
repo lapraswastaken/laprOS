@@ -1,6 +1,6 @@
 This embed will tell you how to set up a story in story-links.
 
-All of these commands must happen in the story-links channel - they won't work anywhere else.
+All of these commands must happen in the story-links channel - they won't work anywhere else. Also, make sure to enter each command as a separate post.
 
 To start, use the `lap.addstory` command to add a new story, and give it your story's name in quotes.
 ```lap.addstory "Null Protocol"```
@@ -15,7 +15,7 @@ To add a rating to your story, use the `lap.setrating` command. Possible ratings
 If you want, you may add a reason why you rated your story the way you did with the `lap.setratingreason` command. This can be anything and can include spoilers if you wish. Note that the reason must be surrounded in quotes.
 ```lap.setratingreason "Swearing, ||graphic depictions of violence||"```
 
-Multiple characters can be added to your story through the `lap.addcharacter` command. Give it a species followed by a name (if applicable / wanted). If a species or name has spaces in it, you will need to surround it in quotes, otherwise this is not necessary.
+Multiple characters can be added to your story through the `lap.addcharacter` command. Give it a species followed by a name (if applicable / wanted). If a species or name has spaces in it, you will need to surround it in quotes, otherwise this is not necessary. If you give both a species and a name, it will appear in the post the opposite way (e.g. "Orial | Mienfoo"). Also note that the order in which the characters are added determines the order in which they appear in the post.
 ```lap.addcharacter Cyndaquil Quil
 lap.addcharacter Mienfoo Orial
 lap.addcharacter Yveltal "The Living God"```

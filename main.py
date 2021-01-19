@@ -3,13 +3,18 @@ import discord
 from discord.ext import commands
 from discordUtils import ARCHIVE_CHANNEL_IDS, dmError
 import os
+import time
 from typing import Union
 
 from ArchiveCog import ArchiveCog
 from MainCog import MainCog
 from StoryCog import StoryCog
 
-bot = commands.Bot(command_prefix="lap.", case_insensitive=True, help_command=commands.DefaultHelpCommand(verify_checks=False))
+bot = commands.Bot(
+    command_prefix="lap.",
+    case_insensitive=True,
+    help_command=commands.DefaultHelpCommand(verify_checks=False)
+)
 mainCog = MainCog(bot)
 bot.add_cog(mainCog)
 bot.add_cog(StoryCog(bot))
@@ -31,7 +36,7 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
 async def on_message(message: discord.Message):
     if message.channel.id in ARCHIVE_CHANNEL_IDS.values():
         if not (message.author.id == bot.user.id and message.content.startswith("**Writer**:")):
-            await message.delete()
+            await message.delete(delay=0.3)
     await bot.process_commands(message)
     
 @bot.event

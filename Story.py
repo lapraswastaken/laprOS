@@ -1,12 +1,13 @@
 
 
-from typing import Optional
 import discord
+import pickle
 import re
+from typing import Optional
 
-ratingPat = re.compile(r"(.+?)(?:\s*\((.+)\))?")
-charsPat = re.compile(r"\s*(.+?)(?:\s*\|\s*(.+?))?(?:,|$)")
-linkPat = re.compile(r"- (.+): <(.+)>")
+ratingPat = re.compile(r"(.+?)(?: \((.+)\))?")
+charsPat = re.compile(r" ?(.+?)(?: \| (.+?))?(?:,|$)")
+linkPat = re.compile(r"- ([A-Z]+): <(.+)>")
 
 class Character:
     def __init__(self, species: str, name: Optional[str]):
@@ -28,10 +29,7 @@ class Story:
         self.summary = summary
         self.links = links
     
-    def __str__(self):
-        return f"Title: {self.title}\nAuthor ID: {self.author.id}\nGenres: {self.genres}\nRating: {self.rating}\nReason: {self.ratingReason}\nCharacters: {self.characters}\nSummary: {self.summary}\nLinks: {self.links}"
-    
-    def toText(self):
+    def format(self):
         genresStr = ", ".join(self.genres)
         ratingStr = self.rating + (f" ({self.ratingReason})" if self.ratingReason else "")
         charsStr = ", ".join([str(char) for char in self.characters])

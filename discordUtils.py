@@ -1,10 +1,13 @@
 
+import discord
 from Story import Story
-from discord.ext.commands.context import Context
+from discord.ext import commands
 from discord import Embed
 import json
-from sources.imageurls import LAPROS_GRAPHIC_URL
 from typing import Optional, Union
+
+LAPROS_GRAPHIC_URL = "https://cdn.discordapp.com/attachments/284520081700945921/799416249738067978/laprOS_logo.png"
+BOT_IDS = [768554429305061387, 785222129061986304]
 
 with open("./sources/archives.json", "r") as f:
     ARCHIVE_CHANNEL_IDS: dict[str, int] = {}
@@ -12,6 +15,11 @@ with open("./sources/archives.json", "r") as f:
     for channelIDstr in loaded:
         ARCHIVE_CHANNEL_IDS[int(channelIDstr)] = loaded[channelIDstr]
 
+def getArchiveChannelForContext(ctx: commands.Context):
+    return ctx.guild.get_channel(ARCHIVE_CHANNEL_IDS[ctx.guild.id])
+
+def checkIsBotID(id: int):
+    return id in BOT_IDS
 
 def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
     """ Creates a custom embed. """
@@ -38,12 +46,14 @@ def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[s
     e.set_thumbnail(url=LAPROS_GRAPHIC_URL)
     return e
 
-async def dmError(ctx: Context, errorText: str):
+async def dmError(ctx: commands.Context, errorText: str):
     """ Sends a message to the author of a command that encountered an error. """
-    
-    await ctx.author.send(f"There was an error with your command `{ctx.message.content}` in the channel #{ctx.channel.name}:\n```\n{errorText}\n```")
+    if isinstance(ctx.channel, discord.DMChannel):
+        await ctx.author.send(f"There was an error with your command:\n```\n{errorText}\n```")
+    else:
+        await ctx.author.send(f"There was an error with your command `{ctx.message.content}` in the channel #{ctx.channel.name}:\n```\n{errorText}\n```")
 
-def moderatorCheck(ctx: Context):
+def moderatorCheck(ctx: commands.Context):
     """ Checks to see if the context's author is a moderator. """
     
     return 550518609714348034 in [role.id for role in ctx.author.roles] or ctx.guild.id == 798023066718175252

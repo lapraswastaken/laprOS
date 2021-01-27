@@ -2,17 +2,18 @@
 from Archive import OVERARCH
 from typing import Union
 from Story import Story
-import json
 import random
 from discordUtils import getLaprOSEmbed, moderatorCheck
 import discord
 from discord.ext import commands
-from StoryCog import ALL_GENRES, ALL_LINK_NAMES, ALL_RATINGS, StoryCog
+import sources.textArchive as T_ARCH
+import sources.textRetrieval as T_RETR
+from CogArchive import CogArchive
 
-with open("./sources/archiveguide.txt", "r") as f:
-    TEXT_ARCHIVE_GUIDE = f.read()
-
-class ArchiveCog(commands.Cog):
+class CogRetrieval(
+    commands.Cog,
+    name=T_RETR.cogName,
+    description=T_RETR.cogDescription):
     
     @staticmethod
     def getStoryEmbed(story: Story, message: discord.Message):
@@ -20,15 +21,6 @@ class ArchiveCog(commands.Cog):
             story.title,
             f"by {story.author.display_name}\n" + (f"```{story.summary}```" if story.summary else "") + "\n" + message.jump_url
         )
-    
-    @commands.command(hidden=True)
-    async def emping(self, ctx: commands.Context):
-        """ A test command for embeds. """
-        
-        await ctx.send(embed=getLaprOSEmbed(
-            "Pong!",
-            "`Hello, world!`"
-        ))
     
     @commands.command(hidden=True)
     @commands.check(moderatorCheck)
@@ -43,52 +35,68 @@ class ArchiveCog(commands.Cog):
         """ Show a help message that explains how to add a story to the archive. """
         
         await ctx.send(embed=getLaprOSEmbed(
-            "Archive guide",
-            TEXT_ARCHIVE_GUIDE
+            T_RETR.embedGuideTitle,
+            T_RETR.embedGuideDescription
         ))
     
     @commands.command()
     async def listgenres(self, ctx: commands.Context):
-        """ Get a list of possible story genres to be added with `lap.addgenre`. """
+        """ Get a list of possible story genres to be added with `addgenre`. """
         
-        await ctx.send("List of all genres: ```\n" + "\n".join(ALL_GENRES) + "```\nIf your genre is not listed here, please let lapras (thebassethound) know.")
+        await ctx.send(T_RETR.listGenre)
     
     @commands.command()
-    async def listlinknames(self, ctx: commands.Context):
-        """ Get a list of possible link names to be added with `lap.addlink`. """
+    async def listsites(self, ctx: commands.Context):
+        """ Get a list of possible site abbreviations to be added with `addlink`. """
         
-        await ctx.send("List of all link names: ```\n" + "\n".join([f"{name} (used for {ALL_LINK_NAMES[name]})" for name in ALL_LINK_NAMES]) + "```\nIf your link name is not listed here, please let lapras (thebassethound) know.")
+        await ctx.send(T_RETR.listSiteAbbrs)
     
     @commands.command()
     async def listratings(self, ctx: commands.Context):
         """ Get a list of possible ratings to be set by `lap.setrating`. """
         
-        await ctx.send("List of all ratings: ```\n" + "\n".join(ALL_RATINGS) + "```")
+        await ctx.send(T_RETR.listRatings)
     
     @commands.command()
     async def randomstory(self, ctx: commands.Context):
         """ Get a random listing from the story archive. """
         
-        archiveChannel = getArchiveChannelForContext(ctx)
-        messages = StoryCog.getMessagesFromChannel(archiveChannel)
-        message = random.choice(messages)
-        stories = await StoryCog.getStoriesFromMessage(message)
-        story = random.choice(stories)
-        await ctx.send(embed=ArchiveCog.getStoryEmbed(story, message))
+        archive = await CogArchive.getArchive(ctx)
+        
+        archiveChannel: discord.TextChannel = await ctx.guild.get_channel(archive.channelID)
+        post = archive.getRandomPost()
+        attempts = 100
+        while True:
+            try:
+                message = await archiveChannel.fetch_message(post.messageID)
+                break
+            except discord.DiscordException:
+                post = archive.getRandomPost()
+            except Exception as e:
+                raise e
+            attempts -= 1
+            if attempts <= 0:
+                await ctx.send(T_RETR.errorRandomStoryFail)
+                return
+                
+        story = post.getRandomStory()
+        await ctx.send(embed=CogRetrieval.getStoryEmbed(story, message))
     
     @commands.command()
     async def searchbyauthor(self, ctx: commands.Context, target: Union[discord.Member, int]):
         """ Get a link to the archive post for a given user. The argument can be the mention of a user or the user's ID. """
         
         if isinstance(target, int):
-            target = await ctx.guild.fetch_member(target)
+            target: discord.Member = await ctx.guild.fetch_member(target)
         
-        archiveChannel = getArchiveChannelForContext(ctx)
-        message = await StoryCog.getMessageForAuthor(archiveChannel, target)
+        archive = await CogArchive.getArchive(ctx)
+        archiveChannel: discord.TextChannel = await ctx.guild.get_channel(archive.channelID)
+        post = archive.getPost(target.id)
+        message: discord.Message = await archiveChannel.fetch_message(post.messageID)
             
         await ctx.send(embed=getLaprOSEmbed(
-            f"Stories by {target.display_name}",
-            f"Archive post:\n{message.jump_url}" if message else f"{target.display_name} doesn't have any posts in the story archive."
+            T_RETR.embedSearchAuthorTitle(target.display_name),
+            T_RETR.embedSearchAuthorDescription(None if not message else message.jump_url)
         ))
     
     @commands.command()
@@ -98,10 +106,10 @@ class ArchiveCog(commands.Cog):
             await ctx.send(f"{targetGenre} is not a valid genre.")
             return
         archiveChannel = getArchiveChannelForContext(ctx)
-        messages = await StoryCog.getMessagesFromChannel(archiveChannel)
+        messages = await CogArchive.getMessagesFromChannel(archiveChannel)
         storiesAndMessages: list[tuple[Story, discord.Message]] = []
         for message in messages:
-            toAdd = await StoryCog.getStoriesFromMessage(message)
+            toAdd = await CogArchive.getStoriesFromMessage(message)
             for story in toAdd:
                 if targetGenre in story.genres:
                     storiesAndMessages.append((story, message))

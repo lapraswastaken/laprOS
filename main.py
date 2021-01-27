@@ -4,29 +4,38 @@ import discord
 from discord.ext import commands
 from discordUtils import dmError
 import os
-import time
+import sources.general as T_GEN
+import sources.textArchive as T_ARCH
+import sources.textErrors as T_ERR
 from typing import Union
 
-from ArchiveCog import ArchiveCog
-from MainCog import MainCog
-from StoryCog import StoryCog
+from CogRetrieval import CogRetrieval
+from CogMain import CogMain
+from CogArchive import CogArchive
 
 bot = commands.Bot(
-    command_prefix="lap.",
+    command_prefix=T_GEN.prefix,
     case_insensitive=True,
     help_command=commands.DefaultHelpCommand(verify_checks=False)
 )
-mainCog = MainCog(bot)
+mainCog = CogMain(bot)
+storyCog =  CogArchive()
+archiveCog = CogRetrieval()
 bot.add_cog(mainCog)
-bot.add_cog(StoryCog())
-bot.add_cog(ArchiveCog())
+bot.add_cog(storyCog)
+bot.add_cog(archiveCog)
 
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}.")
 
 @bot.event
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    await CogArchive.handleReactionAdd(payload)
+
+@bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
+    if user.bot: return
     await mainCog.handleVoteAdd(reaction, user)
 
 @bot.event
@@ -34,29 +43,39 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
     await mainCog.handleVoteRemove(payload.message_id, payload.emoji, payload.user_id)
 
 @bot.event
+async def on_message_delete(message: discord.Message):
+    if message.author.bot: return
+    await mainCog.handleMessageRemove(message)
+
+@bot.event
 async def on_message(message: discord.Message):
     if OVERARCH.isValidChannelID(message.channel.id):
-        if not (message.author.id == bot.user.id and (message.content.startswith("**Writer**:") or message.content.startswith("*Hold on...*"))):
-            await message.delete(delay=0.3)
+        if not (message.author.id == bot.user.id and (message.content.startswith(T_ARCH.messagePrefix) or message.content.startswith(T_ARCH.messageWait))):
+            await message.delete(delay=0.5)
+    if message.author.bot: return
     await bot.process_commands(message)
     
 @bot.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):
     if isinstance(error, commands.MissingRequiredArgument):
-        await dmError(ctx, f"You missed an argument that is required to use this command: {error.param.name}")
+        await dmError(ctx, T_ERR.missingRequiredArgument(error.param.name))
     elif isinstance(error, commands.TooManyArguments):
-        await dmError(ctx, "You gave this command too many arguments. Make sure you're surrounding arguments that have spaces in them with quotes (space is the delimiter for arguments).")
+        await dmError(ctx, T_ERR.tooManyArguments)
     elif isinstance(error, commands.CommandNotFound):
-        await dmError(ctx, "This command doesn't exist!")
+        await dmError(ctx, T_ERR.commandNotFound)
     elif isinstance(error, commands.CommandOnCooldown):
-        await dmError(ctx, f"This command is on cooldown right now. Please wait {int(error.retry_after)} seconds and try again.")
+        await dmError(ctx, T_ERR.commandOnCooldown(int(error.retry_after)))
+        return
+    elif isinstance(error, commands.InvalidEndOfQuotedStringError):
+        await dmError(ctx, T_ERR.invalidEndOfQuotedStringError)
         return
     elif isinstance(error, commands.CheckFailure):
         return
     else:
-        await dmError(ctx, "An unexpected error occurred. Please let @lapras know.")
+        await dmError(ctx, T_ERR.unexpected)
         raise error
-    ctx.command.reset_cooldown(ctx)
+    if ctx.command:
+        ctx.command.reset_cooldown(ctx)
 
 @bot.event
 async def on_disconnect():

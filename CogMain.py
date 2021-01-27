@@ -1,11 +1,12 @@
 
+from discordUtils import meCheck
 from typing import Union
 import discord
 from discord.ext import commands
 import random
 
-class MainCog(commands.Cog):
-    def __init__(self, bot):
+class CogMain(commands.Cog):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         
         self.votes: dict[int, dict[str, list[int]]] = {}
@@ -33,10 +34,22 @@ class MainCog(commands.Cog):
         if emoji in ["🟢", "🔴"] and userID in vote[emoji]:
             vote[emoji].remove(userID)
     
+    async def handleMessageRemove(self, message: discord.Message):
+        if message.id in self.votes and message.author.id == 244238135595106305:
+            await message.channel.send("laprOS will not allow Hermit to silence democracy.")
+            ctx = await self.bot.get_context(message)
+            await self.vote(ctx)
+    
     @commands.command(hidden=True)
     async def ping(self, ctx: commands.Context):
         """ Test command. """
         await ctx.send("Pong")
+    
+    @commands.command(hidden=True)
+    @commands.check(meCheck)
+    async def cat(self, ctx: commands.Context, *args: str):
+        await ctx.message.delete()
+        await ctx.send(" ".join(args))
     
     @commands.command()
     async def vote(self, ctx: commands.Context):

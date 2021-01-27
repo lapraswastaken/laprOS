@@ -1,8 +1,17 @@
 
 from __future__ import annotations
 
+import json
 import pickle
-from typing import Callable, Optional
+import random
+from typing import Callable, Optional, Union
+
+MAX_TITLE_LEN = 50
+MAX_RATING_REASON_LEN = 50
+MAX_CHAR_SPECIES_LEN = 20
+MAX_CHAR_NAME_LEN = 20
+MAX_SUMMARY_LEN = 1000
+MAX_LINK_URL_LEN = 100
 
 ALL_RATINGS = ["K", "K+", "T", "M"]
 ALL_GENRES = [
@@ -28,7 +37,7 @@ ALL_GENRES = [
     "Tragedy",
     "Western"
 ]
-ALL_LINK_NAMES = {
+ALL_SITE_ABBREVIATIONS = {
     "AO3": "Archive Of Our Own",
     "FFN": "FanFiction.Net",
     "TR": "Thousand Roads",
@@ -39,12 +48,15 @@ ALL_LINK_NAMES = {
 }
 
 def isValidGenre(name: str): return name in ALL_GENRES
-def isValidSiteAbbr(name: str): return name in ALL_LINK_NAMES
+def isValidSiteAbbr(name: str): return name in ALL_SITE_ABBREVIATIONS
 def isValidRating(name: str): return name in ALL_RATINGS
 
 class InvalidNameException(Exception): pass
 class DuplicateException(Exception): pass
 class NotFoundException(Exception): pass
+class MaxLenException(Exception): pass
+class MaxSpeciesLenException(MaxLenException): pass
+class MaxNameLenException(MaxLenException): pass
 
 class Prioritied:
     def __init__(self, priority: Optional[int]=None):
@@ -62,13 +74,19 @@ class Genre(Prioritied):
         super().__init__(priority)
         
         self.name = name
+    
+    def toJSON(self):
+        return (self.name, self.priority)
 
 class Character(Prioritied):
-    def __init__(self, species: str, name: str, priority: Optional[int]=None):
+    def __init__(self, species: str, name: str="", priority: Optional[int]=None):
         super().__init__(priority)
         
         self.species = species
         self.name = name
+    
+    def toJSON(self):
+        return (self.species, self.name, self.priority)
     
     def __eq__(self, other: object):
         if not isinstance(other, Character): return False
@@ -88,21 +106,52 @@ class Link(Prioritied):
         
         self.siteAbbr = siteAbbr
         self.url = url
+    
+    def toJSON(self):
+        return (self.siteAbbr, self.url, self.priority)
 
 class Story(Prioritied):
-    def __init__(self, title: str, genres: list[Genre]=[], rating: str="", ratingReason: str="", characters: list[Character]=[], summary: str="", links: list[Link]=[], priority: Optional[int]=None):
+    def __init__(self, title: str, genres: Optional[list[tuple]]=None, rating: Optional[str]=None, ratingReason: Optional[str]=None, characters: Optional[list[Character]]=None, summary: Optional[str]=None, links: Optional[list[Link]]=None, priority: Optional[int]=None):
         super().__init__(priority)
+        if len(title) > MAX_TITLE_LEN:
+            raise MaxLenException()
         
         self.title = title
-        self.genres = genres
-        self.rating = rating
-        self.ratingReason = ratingReason
-        self.characters = characters
-        self.summary = summary
-        self.links = links
+        self.genres: list[Genre] = [] if not genres else [Genre(*genre) for genre in genres]
+        self.rating = "" if not rating else rating
+        self.ratingReason = "" if not ratingReason else ratingReason
+        self.characters: list[Character] = [] if not characters else [Character(*character) for character in characters]
+        self.summary = "" if not summary else summary
+        self.links: list[Link] = [] if not links else [Link(*link) for link in links]
+    
+    def toJSON(self):
+        json = {
+            "title": self.title,
+            "genres": [genre.toJSON() for genre in self.genres],
+            "rating": self.rating,
+            "ratingReason": self.ratingReason,
+            "characters": [character.toJSON() for character in self.characters],
+            "summary": self.summary,
+            "links": [link.toJSON() for link in self.links],
+            "priority": self.priority
+        }
+        return json
+    
+    @staticmethod
+    def fromJSON(json: dict[str, Union[str, list[str]]]):
+        return Story(
+            json["title"],
+            [Genre(*tup) for tup in json["genres"]],
+            json["rating"],
+            json["ratingReason"],
+            [Character(*tup) for tup in json["characters"]],
+            json["summary"],
+            [Link(*tup) for tup in json["links"]],
+            json["priority"]
+        )
     
     def format(self):
-        genresStr = ", ".join(sorted(self.genres, key=Prioritied.key))
+        genresStr = ", ".join([genre.name for genre in sorted(self.genres, key=Prioritied.key)])
         ratingStr = self.rating
         if self.ratingReason:
             ratingStr += f" ({self.ratingReason})"
@@ -110,15 +159,21 @@ class Story(Prioritied):
         summaryStr = f"```\n{self.summary}\n```" if self.summary else ""
         linksStr = "\n".join([f"- {link.siteAbbr}: <{link.url}>" for link in sorted(self.links, key=Prioritied.key)])
         
-        return "" + \
+        string = "" + \
             f"**Title**: {self.title}\n" + \
             f"**Genres**: {genresStr}\n" + \
             f"**Rating**: {ratingStr}\n" + \
             f"**Main Characters**: {charsStr}\n" + \
             f"**Summary**:\n{summaryStr}\n" + \
             f"**Links**:\n{linksStr}"
+        return string
+    
+    def cite(self):
+        return f"\"{self.title}\""
     
     def setTitle(self, newTitle: str):
+        if len(newTitle) > MAX_TITLE_LEN:
+            raise MaxLenException()
         self.title = newTitle
     
     def addGenre(self, newName: str, newPriority: Optional[int]=None):
@@ -145,9 +200,15 @@ class Story(Prioritied):
         self.rating = newRating
     
     def setRatingReason(self, newReason: str):
+        if len(newReason) > MAX_RATING_REASON_LEN:
+            raise MaxLenException()
         self.ratingReason = newReason
     
-    def addCharacter(self, newSpecies: str, newName: Optional[str]=None, newPriority: Optional[int]=None):
+    def addCharacter(self, newSpecies: str, newName: str="", newPriority: Optional[int]=None):
+        if len(newSpecies) > MAX_CHAR_SPECIES_LEN:
+            raise MaxSpeciesLenException()
+        if len(newName) > MAX_CHAR_NAME_LEN:
+            raise MaxNameLenException()
         if newPriority == None and self.characters:
             newPriority = self.characters[-1].increment()
         newChar = Character(newSpecies, newName, newPriority)
@@ -155,7 +216,7 @@ class Story(Prioritied):
             raise DuplicateException()
         self.characters.append(newChar)
     
-    def removeCharacter(self, targetSpecies: str, targetName: Optional[str]=None):
+    def removeCharacter(self, targetSpecies: str, targetName: str=""):
         targetChar = Character(targetSpecies, targetName)
         fetched: Optional[Character] = None
         for char in self.characters:
@@ -170,9 +231,13 @@ class Story(Prioritied):
         self.characters.remove(fetched)
     
     def setSummary(self, newSummary: str):
+        if len(newSummary) > MAX_SUMMARY_LEN:
+            raise MaxLenException()
         self.summary = newSummary
     
     def addLink(self, newSiteAbbr: str, newURL: str, newPriority: Optional[int]=None):
+        if len(newURL) > MAX_LINK_URL_LEN:
+            raise MaxLenException()
         if not isValidSiteAbbr(newSiteAbbr):
             raise InvalidNameException()
         if newPriority == None and self.links:
@@ -192,20 +257,79 @@ class Story(Prioritied):
         self.links.remove(fetched)
 
 class Post:
-    def __init__(self, authorID: int):
+    def __init__(self, authorID: int, messageID: Optional[int]=None, stories: Optional[list[dict]]=None, focused: Optional[int]=None):
         self.authorID = authorID
-        self.messageIDs: list[int] = []
-        self.stories: list[Story] = []
+        self.messageID= messageID
+        self.stories: list[Story] = [] if not stories else [Story(**story) for story in stories]
+        self.focused = focused
+    
+    def toJSON(self):
+        json = {
+            "authorID": self.authorID,
+            "messageID": self.messageID,
+            "focused": self.focused,
+            "stories": [story.toJSON() for story in self.stories]
+        }
+        return json
+    
+    def format(self):
+        string = ""
+        for i, story in enumerate(self.stories):
+            if i == self.focused:
+                string += f"**\> {story.title}**\n"
+            else:
+                string += f"{story.title}\n"
+        
+        return string
     
     def addStory(self, newStory: Story):
         if newStory.title in [story.title for story in self.stories]:
             raise DuplicateException()
         self.stories.append(newStory)
+    
+    def getStory(self, targetTitle: Optional[str]=None):
+        if not targetTitle:
+            return self.stories[self.focused]
+        for story in self.stories:
+            if story.title == targetTitle:
+                return story
+        raise NotFoundException()
+
+    def removeStory(self, targetTitle: str):
+        retrieved: Optional[Story] = None
+        for story in self.stories:
+            if story.title == targetTitle:
+                retrieved = story
+        if not retrieved:
+            raise NotFoundException()
+        self.stories.remove(retrieved)
+    
+    def getFocusedStory(self) -> Story:
+        return self.stories[self.focused]
+    
+    def focusStory(self, story: Story):
+        index = self.stories.index(story)
+        self.focused = index
+    
+    def getRandomStory(self):
+        return random.choice(self.stories)
 
 class Archive:
-    def __init__(self, channelID: int):
+    def __init__(self, channelID: int, posts: Optional[dict[str, dict]]=None):
         self.channelID = channelID
         self.posts: dict[int, Post] = {}
+        if posts:
+            for authorID in posts:
+                self.posts[int(authorID)] = Post(**posts[authorID])
+    
+    def toJSON(self):
+        json = {
+            "channelID": self.channelID,
+            "posts": {}
+        }
+        for authorID in self.posts:
+            json["posts"][authorID] = self.posts[authorID].toJSON()
+        return json
     
     def createPost(self, authorID: int):
         if authorID in self.posts:
@@ -215,19 +339,46 @@ class Archive:
     
     def getPost(self, authorID: int):
         return self.posts.get(authorID)
+    
+    def getPostByMessageID(self, targetMessageID):
+        for authorID in self.posts:
+            post = self.posts[authorID]
+            if post.messageID == targetMessageID:
+                return post
+        raise NotFoundException()
+    
+    def getRandomPost(self):
+        return random.choice(list(self.posts.values()))
+    
+    def getAllStories(self):
+        allStories = []
+        for post in self.posts.values():
+            allStories += post.stories
+        return allStories
 
 class OverArch:
-    def __init__(self, archives: dict[int, Archive]={}):
-        self.archives = archives
+    def __init__(self, archives: dict[str, dict]=None):
+        self.archives: dict[int, Archive] = {}
+        if archives:
+            for guildID in archives:
+                self.archives[int(guildID)] = Archive(**archives[guildID])
     
     @staticmethod
     def read():
-        with open("./sources/overarch.p", "rb") as f:
-            return pickle.load(f)
+        with open("./sources/archives.json", "r") as f:
+            return OverArch(**json.loads(f.read()))
     
     def write(self):
-        with open("./sources/overarch.p", "wb") as f:
-            pickle.dump(self, f)
+        with open("./sources/archives.json", "w") as f:
+            f.write(json.dumps(self.toJSON()))
+    
+    def toJSON(self):
+        json = {
+            "archives": {}
+        }
+        for guildID in self.archives:
+            json["archives"][guildID] = self.archives[guildID].toJSON()
+        return json
         
     def addArchive(self, guildID: int, channelID: int):
         if guildID in self.archives:

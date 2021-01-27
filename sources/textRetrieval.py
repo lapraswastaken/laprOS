@@ -1,6 +1,24 @@
-This embed will tell you how to set up a story in story-links.
 
-All of these commands must happen in the story-links channel - they won't work anywhere else. Also, make sure to enter each command as a separate post.
+from Archive import ALL_GENRES, ALL_RATINGS, ALL_SITE_ABBREVIATIONS
+import sources.general as T_GEN
+
+cogName = "Retrieval Cog"
+cogDescription = "This part of the bot aids in finding stories and other story-related utilities."
+
+_listText = lambda item, joinedItems, suffix=True: f"Below is each valid {item}: ```\n{joinedItems}```" + "" if not suffix else "\nIf your {item} is not listed here, please let {G.mentionMe} or a moderator know."
+listGenre = _listText("genre", "\n".join(ALL_GENRES))
+listSiteAbbrs = _listText("site abbreviation", "\n".join([f"{name} (used for {ALL_SITE_ABBREVIATIONS[name]})" for name in ALL_SITE_ABBREVIATIONS]))
+listRatings = _listText("rating", ", ".join(ALL_RATINGS), False)
+
+errorRandomStoryFail = "Couldn't find a story."
+
+embedSearchAuthorTitle = lambda name: f"Stories by {name}"
+embedSearchAuthorDescription = lambda jump, name: f"Archive post:\n{jump}" if jump else f"{name} doesn't have any posts in the story archive."
+
+embedGuideTitle = "Archive guide"
+embedGuideDescription = """ This embed will tell you how to set up a story in story-links.
+
+All of these commands must happen in the story-links channel - they won't work anywhere else.
 
 To start, use the `lap.addstory` command to add a new story, and give it your story's name in quotes.
 ```lap.addstory "Null Protocol"```
@@ -24,4 +42,4 @@ Next you can add a summary to your story with the `lap.setsummary` command. Note
 ```lap.setsummary "Forterra has been swept by the new pandemic mystery dungeons... etc."```
 
 Last in the list is the links, which can be added using the `lap.addlink` command. It takes a name for the link and the link itself. The list of valid link names can be found using the `lap.listlinknames` command.
-```lap.addlink AO3 https://archiveofourown.org/```
+```lap.addlink AO3 https://archiveofourown.org/``` """

@@ -3,16 +3,13 @@ import discord
 from Story import Story
 from discord.ext import commands
 from discord import Embed
-import json
+import sources.general as T_GEN
+import sources.textErrors as T_ERR
+import sources.ids as IDS
 from typing import Optional, Union
 
-LAPROS_GRAPHIC_URL = "https://cdn.discordapp.com/attachments/284520081700945921/799416249738067978/laprOS_logo.png"
-BOT_IDS = [768554429305061387, 785222129061986304]
 
-def checkIsBotID(id: int):
-    return id in BOT_IDS
-
-def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
+def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
     """ Creates a custom embed. """
     
     if not description: description = ""
@@ -27,22 +24,32 @@ def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[s
     for field in fields:
         e.add_field(
             name=field[0],
-            value="\u200b" if not len(field) >= 2 else field[1],
+            value=T_GEN.empty if not len(field) >= 2 else field[1],
             inline=False if not len(field) == 3 else field[2]
         )
     if imageURL:
         e.set_image(url=imageURL)
     if footer:
         e.set_footer(text=footer)
-    e.set_thumbnail(url=LAPROS_GRAPHIC_URL)
+    return e
+
+def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
+    e = getEmbed(title, description, fields, imageURL, footer, url)
+    e.set_thumbnail(url=T_GEN.LAPROS_GRAPHIC_URL)
     return e
 
 async def dmError(ctx: commands.Context, errorText: str):
     """ Sends a message to the author of a command that encountered an error. """
     if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.author.send(f"There was an error with your command:\n```\n{errorText}\n```")
+        await ctx.author.send(T_ERR.dmMessage(errorText))
     else:
-        await ctx.author.send(f"There was an error with your command `{ctx.message.content}` in the channel #{ctx.channel.name}:\n```\n{errorText}\n```")
+        await ctx.author.send(T_ERR.dmMessageWithChannel(ctx.message.content[:1500], ctx.channel.id, errorText))
+
+def checkIsBotID(id: int):
+    return id in IDS.botIDs
+    
+def meCheck(ctx: commands.Context):
+    return ctx.author.id == IDS.myID
 
 def moderatorCheck(ctx: commands.Context):
     """ Checks to see if the context's author is a moderator. """

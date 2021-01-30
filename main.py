@@ -78,7 +78,7 @@ async def on_message_delete(message: discord.Message):
             break
     if retrievedDeleterID != None:
         deleter: discord.Member = await message.guild.fetch_member(retrievedDeleterID)
-        if message.guild.id == 546872429621018635 and not 550518609714348034 in [role.id for role in deleter.roles]: return
+        #if message.guild.id == 546872429621018635 and not 550518609714348034 in [role.id for role in deleter.roles]: return
         
         channel = message.guild.get_channel(logChannels[message.guild.id])
         await channel.send(f"> Message from <@{message.author.id}> deleted by <@{deleter.id}>:")

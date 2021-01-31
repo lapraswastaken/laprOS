@@ -150,6 +150,49 @@ class StoryCog(commands.Cog):
     async def clearproxy(self, ctx: commands.Context):
         if ctx.author.id in self.proxies:
             self.proxies.pop(ctx.author.id)
+
+    @commands.command(ignore_extra=False)
+    async def multi(self, ctx: commands.Context, *args) -> None:
+        """ Runs multiple commands from one message """
+
+        names_to_funcs = {
+                "addstory":self.addstory,
+                "removestory":self.removestory,
+                "settitle":self.settitle,
+                "addgenre":self.addgenre,
+                "removegenre":self.removegenre,
+                "setrating":self.setrating,
+                "setratingreason":self.setratingreason,
+                "addcharacter":self.addcharacter,
+                "removecharacter":self.removecharacter,
+                "setsummary":self.setsummary,
+                "addlink":self.addlink,
+                "removelink":self.removelink
+                }
+
+        def clean_up_args(args):
+            ret = []
+            for arg in args:
+                if "=" in arg:
+                    ret.append(arg)
+                    continue
+                ret[-1] = ret[-1] + " " + arg
+            return ret
+
+        args = clean_up_args(args)
+
+        for arg in args:
+            func_name, sub_args = arg.split("=")
+            try:
+                func = names_to_funcs[func_name]
+            except KeyError:
+                await dmError(ctx, f"No function '{func_name}' (did you mistype?)")
+                continue
+            if func_name == "addlink":
+                link_name, link = sub_args.split(" ")
+                await func(ctx, link_name, link)
+                continue
+            await func(ctx, sub_args)
     
     @commands.command(ignore_extra=False)
     @commands.cooldown(1, 8 * 60, commands.BucketType.guild)

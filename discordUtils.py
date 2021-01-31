@@ -46,10 +46,10 @@ async def dmError(ctx: commands.Context, errorText: str):
         await ctx.author.send(T_ERR.dmMessageWithChannel(ctx.message.content[:1500], ctx.channel.id, errorText))
 
 def checkIsBotID(id: int):
-    return id in IDS.botIDs
+    return id in IDS.botUserIDs
     
 def meCheck(ctx: commands.Context):
-    return ctx.author.id == IDS.myID
+    return ctx.author.id == IDS.MY_USER_ID
 
 def moderatorCheck(ctx: commands.Context):
     """ Checks to see if the context's author is a moderator. """

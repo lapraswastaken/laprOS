@@ -1,17 +1,19 @@
 
-from Archive import OVERARCH
+import datetime
 import discord
 from discord.ext import commands
 from discordUtils import dmError
 import os
-import sources.general as T_GEN
-import sources.textArchive as T_ARCH
-import sources.textErrors as T_ERR
 from typing import Union
 
+from Archive import OVERARCH
 from CogRetrieval import CogRetrieval
 from CogMain import CogMain
 from CogArchive import CogArchive
+from CogMod import CogMod
+import sources.general as T_GEN
+import sources.textArchive as T_ARCH
+import sources.textErrors as T_ERR
 
 bot = commands.Bot(
     command_prefix=T_GEN.prefix,
@@ -21,9 +23,11 @@ bot = commands.Bot(
 mainCog = CogMain(bot)
 storyCog =  CogArchive()
 archiveCog = CogRetrieval()
+modCog = CogMod()
 bot.add_cog(mainCog)
 bot.add_cog(storyCog)
 bot.add_cog(archiveCog)
+bot.add_cog(modCog)
 
 @bot.event
 async def on_ready():
@@ -45,7 +49,8 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
 @bot.event
 async def on_message_delete(message: discord.Message):
     if message.author.bot: return
-    await mainCog.handleMessageRemove(message)
+    await mainCog.handleMessageDelete(message)
+    await modCog.handleMessageDelete(message)
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -83,7 +88,7 @@ async def on_disconnect():
 
 @bot.check
 async def globalCheck(ctx: commands.Context):
-    print(f"{ctx.message.author.name}: {ctx.message.content}")
+    print(f"[{datetime.datetime().now().time()}] {ctx.message.author.name}: {ctx.message.content}")
     return True
 
 bot.run(os.getenv("DISCORD_SECRET_PWUBOT"))

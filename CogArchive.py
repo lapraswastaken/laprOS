@@ -334,3 +334,9 @@ class CogArchive(
             except NotFoundException:
                 await dmError(ctx, T_ARCH.errorNoLink(story.cite(), targetSiteAbbr))
         await self.setStoryAttr(ctx, targetTitle, changeLink)
+    
+    @commands.command()
+    async def convert(self, ctx: commands.Context):
+        """ Adds each story in the archive channel this command is used in to the JSON database. """
+        
+        async for message in ctx.channel.history():

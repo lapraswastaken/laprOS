@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import pickle
 import random
+import re
 from typing import Callable, Optional, Union
 
 MAX_TITLE_LEN = 50
@@ -255,6 +256,46 @@ class Story(Prioritied):
         if not fetched:
             raise NotFoundException()
         self.links.remove(fetched)
+
+charsPat = re.compile(r" ?(.+?)(?: \| (.+?))?(?:,|$)")
+linkPat = re.compile(r"- ([A-Z]+): <(.+)>")
+
+def convertOldFromText(text: str):
+    lines = text.split("\n")
+    getter = lambda i: lines[i].split(":", 1)[1].strip()
+    title = getter(0)
+    genres = [genre for genre in getter(1).split(", ") if genre]
+    ratingRaw = getter(2).split("(", 1)
+    rating = ratingRaw[0].strip()
+    reason = ""
+    if len(ratingRaw) == 2:
+        reason = ratingRaw[1][:-1].strip()
+    charsRaw = getter(3)
+    chars: list[Character] = []
+    for left, right in charsPat.findall(charsRaw):
+        char = Character(right if right else left, left if right else None)
+        chars.append(char)
+    summary = []
+    endSum = False
+    i = 6 # the index of the first line of the summary
+    while not endSum:
+        if lines[i].startswith("```"):
+            endSum = True
+        elif lines[i].startswith("**Links**:"):
+            endSum = True
+        else:
+            summary.append(lines[i])
+        i += 1
+    summary = "\n".join(summary)
+    links = {}
+    i += 1
+    while i < len(lines):
+        linksMatch = linkPat.search(lines[i])
+        if linksMatch:
+            links[linksMatch.group(1)] = linksMatch.group(2)
+        i += 1
+    
+    return Story(title, genres, rating, reason, chars, summary, links)
 
 class Post:
     def __init__(self, authorID: int, messageID: Optional[int]=None, stories: Optional[list[dict]]=None, focused: Optional[int]=None):

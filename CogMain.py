@@ -34,7 +34,7 @@ class CogMain(commands.Cog):
         if emoji in ["🟢", "🔴"] and userID in vote[emoji]:
             vote[emoji].remove(userID)
     
-    async def handleMessageRemove(self, message: discord.Message):
+    async def handleMessageDelete(self, message: discord.Message):
         if message.id in self.votes and message.author.id == 244238135595106305:
             await message.channel.send("laprOS will not allow Hermit to silence democracy.")
             ctx = await self.bot.get_context(message)

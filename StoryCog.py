@@ -153,22 +153,22 @@ class StoryCog(commands.Cog):
 
     @commands.command(ignore_extra=False)
     async def multi(self, ctx: commands.Context, *args) -> None:
-        """ Runs multiple commands from one message """
+        """ Runs multiple commands from one message. Props to love for implementing this. """
 
         names_to_funcs = {
-                "addstory":self.addstory,
-                "removestory":self.removestory,
-                "settitle":self.settitle,
-                "addgenre":self.addgenre,
-                "removegenre":self.removegenre,
-                "setrating":self.setrating,
-                "setratingreason":self.setratingreason,
-                "addcharacter":self.addcharacter,
-                "removecharacter":self.removecharacter,
-                "setsummary":self.setsummary,
-                "addlink":self.addlink,
-                "removelink":self.removelink
-                }
+            "addstory":self.addstory,
+            "removestory":self.removestory,
+            "settitle":self.settitle,
+            "addgenre":self.addgenre,
+            "removegenre":self.removegenre,
+            "setrating":self.setrating,
+            "setratingreason":self.setratingreason,
+            "addcharacter":self.addcharacter,
+            "removecharacter":self.removecharacter,
+            "setsummary":self.setsummary,
+            "addlink":self.addlink,
+            "removelink":self.removelink
+        }
 
         def clean_up_args(args):
             ret = []

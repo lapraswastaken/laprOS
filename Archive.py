@@ -75,6 +75,7 @@ class Story(Prioritied):
     def __init__(self, title: str, genres: Optional[list[tuple]]=None, rating: Optional[str]=None, ratingReason: Optional[str]=None, characters: Optional[list[Character]]=None, summary: Optional[str]=None, links: Optional[list[Link]]=None, priority: Optional[int]=None):
         super().__init__(priority)
         if len(title) > T_ARCH.MAX_TITLE_LEN:
+            print(f"title '{title}' is too long")
             raise MaxLenException()
         
         self.title = title

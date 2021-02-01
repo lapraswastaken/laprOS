@@ -62,10 +62,16 @@ class CogArchive(commands.Cog, name=T_ARCH.cogName, description=T_ARCH.cogDescri
         reactionLockedMessageIDs.append(message.id)
         
         story = post.getFocusedStory()
-        await message.edit(
-            content=T_ARCH.messageBody(post.authorID, story.format()[:1800]),
-            embed=getEmbed(T_ARCH.embedTitle, T_ARCH.embedDescription(post.format()))
-        )
+        if len(post.stories) > 1:
+            await message.edit(
+                content=T_ARCH.messageBody(post.authorID, story.format()[:1800]),
+                embed=getEmbed(T_ARCH.embedTitle, T_ARCH.embedDescription(post.format()))
+            )
+        else:
+            await message.edit(
+                content=T_ARCH.messageBody(post.authorID, story.format()[:1800]),
+                embed=None
+            )
         
         await message.clear_reactions()
         if post.focused > 0:
@@ -386,3 +392,9 @@ class CogArchive(commands.Cog, name=T_ARCH.cogName, description=T_ARCH.cogDescri
                 except DuplicateException:
                     continue
             await self.updateArchivePost(ctx.channel, post, None)
+
+    @commands.command(hidden=True)
+    @commands.check(moderatorCheck)
+    async def updatepost(self, ctx: commands.Context):
+        async def dummy(_): pass
+        await self.setStoryAttr(ctx, None, dummy)

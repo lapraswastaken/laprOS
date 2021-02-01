@@ -8,7 +8,7 @@ from typing import Optional
 
 ratingPat = re.compile(r"(.+?)(?: \((.+)\))?")
 charsPat = re.compile(r" ?(.+?)(?: \| (.+?))?(?:,|$)")
-linkPat = re.compile(r"- ([A-Z]+): <(.+)>")
+linkPat = re.compile(r"- (\w+): <(.+)>")
     
 def newFromText(author: discord.Member, text: str):
     lines = text.split("\n")
@@ -38,7 +38,6 @@ def newFromText(author: discord.Member, text: str):
         i += 1
     summary = "\n".join(summary)
     links = []
-    i += 1
     while i < len(lines):
         linksMatch = linkPat.search(lines[i])
         if linksMatch:

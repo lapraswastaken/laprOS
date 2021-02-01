@@ -73,8 +73,6 @@ def getStringArgsFromText(text: str):
         
         if inQuote:
             if word.endswith("\""):
-                if not inQuote:
-                    raise SyntaxError("Encountered unexpected quote")
                 word = word[:-1]
                 inQuote = False
             

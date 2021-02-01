@@ -10,7 +10,6 @@ import sources.textArchive as T_ARCH
 import sources.general as T_GEN
 
 digitsPat = re.compile(r"(\d+)")
-SEPARATOR = "\n\n=====\n\n"
 
 reactionLockedMessageIDs: list[int] = []
 
@@ -361,7 +360,8 @@ class CogArchive(commands.Cog, name=T_ARCH.cogName, description=T_ARCH.cogDescri
                 await dmErrorAndRaise(ctx, T_ARCH.errorNoLink(story.cite(), targetSiteAbbr))
         await self.setStoryAttr(ctx, targetTitle, changeLink)
     
-    @commands.command()
+    @commands.command(hidden=True)
+    @commands.check(moderatorCheck)
     async def convert(self, ctx: commands.Context):
         """ Adds each story in the archive channel this command is used in to the JSON database. """
         

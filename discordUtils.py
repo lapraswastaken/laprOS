@@ -44,6 +44,11 @@ async def dmError(ctx: commands.Context, errorText: str):
         await ctx.author.send(T_ERR.dmMessage(errorText))
     else:
         await ctx.author.send(T_ERR.dmMessageWithChannel(ctx.message.content[:1500], ctx.channel.id, errorText))
+    
+async def dmErrorAndRaise(ctx: commands.Context, errorText: str) -> Exception:
+    """ Sends a message to the author of a command that encountered an error, then raises a commands.CheckFailure. """
+    await dmError(ctx, errorText)
+    raise commands.CheckFailure()
 
 def checkIsBotID(id: int):
     return id in IDS.botUserIDs
@@ -55,3 +60,27 @@ def moderatorCheck(ctx: commands.Context):
     """ Checks to see if the context's author is a moderator. """
     
     return 550518609714348034 in [role.id for role in ctx.author.roles] or ctx.guild.id == 798023066718175252
+
+def getStringArgsFromText(text: str):
+    
+    args: list[str] = []
+    inQuote = False
+    for word in text.split(" "):
+        if word.startswith("\"") and not inQuote and not len(word) == 1:
+            word = word[1:]
+            args.append("")
+            inQuote = True
+        
+        if inQuote:
+            if word.endswith("\""):
+                if not inQuote:
+                    raise SyntaxError("Encountered unexpected quote")
+                word = word[:-1]
+                inQuote = False
+            
+            args[-1] = (args[-1] + f" {word}").strip()
+        else:
+            args.append(word)
+    if inQuote:
+        raise SyntaxError("Encountered end of line when parsing string")
+    return args

@@ -16,13 +16,13 @@ class CogRetrieval(
     description=T_RETR.cogDescription):
     
     @staticmethod
-    def getStoryEmbed(story: Story, message: discord.Message):
+    def getStoryEmbed(story: Story, author: discord.Member, message: discord.Message):
         return getLaprOSEmbed(
-            story.title,
-            f"by {story.author.display_name}\n" + (f"```{story.summary}```" if story.summary else "") + "\n" + message.jump_url
+            T_RETR.embedStoryTitle(story.title),
+            T_RETR.embedStoryDescription(author.display_name, story.summary, message.jump_url)
         )
     
-    @commands.command(hidden=True)
+    @commands.command(name=T_RETR.cmdSetArchiveChannel, help=T_RETR.cmdSetArchiveChannelHelp, hidden=True)
     @commands.check(moderatorCheck)
     async def setarchivechannel(self, ctx: commands.Context, channel: discord.TextChannel):
         """ Sets the archive channel for this server. """
@@ -63,24 +63,26 @@ class CogRetrieval(
         
         archive = await CogArchive.getArchive(ctx)
         
-        archiveChannel: discord.TextChannel = await ctx.guild.get_channel(archive.channelID)
+        archiveChannel: discord.TextChannel = ctx.guild.get_channel(archive.channelID)
         post = archive.getRandomPost()
         attempts = 100
         while True:
             try:
-                message = await archiveChannel.fetch_message(post.messageID)
+                message: discord.Message = await archiveChannel.fetch_message(post.messageID)
+        
+                author: discord.Member = await ctx.guild.fetch_member(post.authorID)
+                if not author: raise discord.DiscordException()
                 break
             except discord.DiscordException:
                 post = archive.getRandomPost()
-            except Exception as e:
-                raise e
+                
             attempts -= 1
             if attempts <= 0:
                 await ctx.send(T_RETR.errorRandomStoryFail)
                 return
-                
+        
         story = post.getRandomStory()
-        await ctx.send(embed=CogRetrieval.getStoryEmbed(story, message))
+        await ctx.send(embed=CogRetrieval.getStoryEmbed(story, author, message))
     
     @commands.command()
     async def searchbyauthor(self, ctx: commands.Context, target: Union[discord.Member, int]):
@@ -93,28 +95,8 @@ class CogRetrieval(
         archiveChannel: discord.TextChannel = await ctx.guild.get_channel(archive.channelID)
         post = archive.getPost(target.id)
         message: discord.Message = await archiveChannel.fetch_message(post.messageID)
-            
+        
         await ctx.send(embed=getLaprOSEmbed(
             T_RETR.embedSearchAuthorTitle(target.display_name),
             T_RETR.embedSearchAuthorDescription(None if not message else message.jump_url)
         ))
-    
-    @commands.command()
-    async def searchbygenre(self, ctx: commands.Context, targetGenre: str):
-        """ Get a list of links to archive posts containing stories with the given genre. """
-        if not targetGenre in ALL_GENRES:
-            await ctx.send(f"{targetGenre} is not a valid genre.")
-            return
-        archiveChannel = getArchiveChannelForContext(ctx)
-        messages = await CogArchive.getMessagesFromChannel(archiveChannel)
-        storiesAndMessages: list[tuple[Story, discord.Message]] = []
-        for message in messages:
-            toAdd = await CogArchive.getStoriesFromMessage(message)
-            for story in toAdd:
-                if targetGenre in story.genres:
-                    storiesAndMessages.append((story, message))
-        if storiesAndMessages:
-            await ctx.send(embed=getLaprOSEmbed(
-                f"{targetGenre} stories",
-                fields=[(storyAndMessage[0].title, storyAndMessage[1].jump_url) for storyAndMessage in storiesAndMessages]
-            ))

@@ -5,52 +5,12 @@ import json
 import pickle
 import random
 import re
+import  sources.textArchive as T_ARCH
 from typing import Callable, Optional, Union
 
-MAX_TITLE_LEN = 50
-MAX_RATING_REASON_LEN = 50
-MAX_CHAR_SPECIES_LEN = 20
-MAX_CHAR_NAME_LEN = 20
-MAX_SUMMARY_LEN = 1000
-MAX_LINK_URL_LEN = 100
-
-ALL_RATINGS = ["K", "K+", "T", "M"]
-ALL_GENRES = [
-    "Adventure",
-    "Angst",
-    "Crime",
-    "Drama",
-    "Family",
-    "Fantasy",
-    "Friendship",
-    "General",
-    "Horror",
-    "Humor",
-    "Hurt/comfort",
-    "Mystery",
-    "Poetry",
-    "Parody",
-    "Romance",
-    "Supernatural",
-    "Suspense",
-    "Sci-fi",
-    "Spiritual",
-    "Tragedy",
-    "Western"
-]
-ALL_SITE_ABBREVIATIONS = {
-    "AO3": "Archive Of Our Own",
-    "FFN": "FanFiction.Net",
-    "TR": "Thousand Roads",
-    "RR": "Royal Road",
-    "DA": "Deviant Art",
-    "WP": "WattPad",
-    "GD": "Google Docs"
-}
-
-def isValidGenre(name: str): return name in ALL_GENRES
-def isValidSiteAbbr(name: str): return name in ALL_SITE_ABBREVIATIONS
-def isValidRating(name: str): return name in ALL_RATINGS
+def isValidGenre(name: str): return name in T_ARCH.ALL_GENRES
+def isValidSiteAbbr(name: str): return name in T_ARCH.ALL_SITE_ABBREVIATIONS
+def isValidRating(name: str): return name in T_ARCH.ALL_RATINGS
 
 class InvalidNameException(Exception): pass
 class DuplicateException(Exception): pass
@@ -114,7 +74,7 @@ class Link(Prioritied):
 class Story(Prioritied):
     def __init__(self, title: str, genres: Optional[list[tuple]]=None, rating: Optional[str]=None, ratingReason: Optional[str]=None, characters: Optional[list[Character]]=None, summary: Optional[str]=None, links: Optional[list[Link]]=None, priority: Optional[int]=None):
         super().__init__(priority)
-        if len(title) > MAX_TITLE_LEN:
+        if len(title) > T_ARCH.MAX_TITLE_LEN:
             raise MaxLenException()
         
         self.title = title
@@ -173,7 +133,7 @@ class Story(Prioritied):
         return f"\"{self.title}\""
     
     def setTitle(self, newTitle: str):
-        if len(newTitle) > MAX_TITLE_LEN:
+        if len(newTitle) > T_ARCH.MAX_TITLE_LEN:
             raise MaxLenException()
         self.title = newTitle
     
@@ -201,14 +161,14 @@ class Story(Prioritied):
         self.rating = newRating
     
     def setRatingReason(self, newReason: str):
-        if len(newReason) > MAX_RATING_REASON_LEN:
+        if len(newReason) > T_ARCH.MAX_RATING_REASON_LEN:
             raise MaxLenException()
         self.ratingReason = newReason
     
     def addCharacter(self, newSpecies: str, newName: str="", newPriority: Optional[int]=None):
-        if len(newSpecies) > MAX_CHAR_SPECIES_LEN:
+        if len(newSpecies) > T_ARCH.MAX_CHAR_SPECIES_LEN:
             raise MaxSpeciesLenException()
-        if len(newName) > MAX_CHAR_NAME_LEN:
+        if len(newName) > T_ARCH.MAX_CHAR_NAME_LEN:
             raise MaxNameLenException()
         if newPriority == None and self.characters:
             newPriority = self.characters[-1].increment()
@@ -232,12 +192,12 @@ class Story(Prioritied):
         self.characters.remove(fetched)
     
     def setSummary(self, newSummary: str):
-        if len(newSummary) > MAX_SUMMARY_LEN:
+        if len(newSummary) > T_ARCH.MAX_SUMMARY_LEN:
             raise MaxLenException()
         self.summary = newSummary
     
     def addLink(self, newSiteAbbr: str, newURL: str, newPriority: Optional[int]=None):
-        if len(newURL) > MAX_LINK_URL_LEN:
+        if len(newURL) > T_ARCH.MAX_LINK_URL_LEN:
             raise MaxLenException()
         if not isValidSiteAbbr(newSiteAbbr):
             raise InvalidNameException()

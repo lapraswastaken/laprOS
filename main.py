@@ -32,6 +32,12 @@ bot.add_cog(modCog)
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}.")
+    guild: discord.Guild
+    for guild in bot.guilds:
+        try:
+            await modCog.handleOnReady(guild)
+        except discord.Forbidden:
+            print(f"Missing permission to view audit logs in {guild.name}")
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
@@ -88,7 +94,7 @@ async def on_disconnect():
 
 @bot.check
 async def globalCheck(ctx: commands.Context):
-    print(f"[{datetime.datetime().now().time()}] {ctx.message.author.name}: {ctx.message.content}")
+    print(f"[{str(datetime.datetime.now().time())[:-7]}] {ctx.message.author.name}: {ctx.message.content}")
     return True
 
 bot.run(os.getenv("DISCORD_SECRET_PWUBOT"))

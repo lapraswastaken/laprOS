@@ -15,18 +15,29 @@ class CogMod(commands.Cog):
     def __init__(self):
         self.oldDeleteEntries: dict[int, MiniEntry] = {}
     
-    async def handleMessageDelete(self, message: discord.Message):
-        if not message.guild.id in IDS.logChannelIDs: return
-    
+    @staticmethod
+    async def getNewEntries(guild: discord.Guild) -> dict[int, MiniEntry]:
+        
         timeout = 300
         newDeleteEntries: dict[int, MiniEntry]  = {}
-        async for entry in message.guild.audit_logs():
+        entry: discord.AuditLogEntry
+        async for entry in guild.audit_logs():
             timeout -= 1
             if timeout <= 0:
                 break
             if not entry.action == discord.AuditLogAction.message_delete: continue
             
-            newDeleteEntries[entry.id] = MiniEntry(entry.user.id, message.author.id, entry.extra.count)
+            newDeleteEntries[entry.id] = MiniEntry(entry.user.id, entry.target.id, entry.extra.count)
+        
+        return newDeleteEntries
+    
+    async def handleOnReady(self, guild: discord.Guild):
+        self.oldDeleteEntries = await CogMod.getNewEntries(guild)
+    
+    async def handleMessageDelete(self, message: discord.Message):
+        if not message.guild.id in IDS.logChannelIDs: return
+        
+        newDeleteEntries = await CogMod.getNewEntries(message.guild)
         
         retrievedDeleterID: Optional[int] = None
         for newID in newDeleteEntries:

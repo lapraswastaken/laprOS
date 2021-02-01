@@ -1,22 +1,20 @@
 
-import sources.textArchive as T_ARCH
-from Archive import DuplicateException, InvalidNameException, MaxLenException, MaxNameLenException, MaxSpeciesLenException, NotFoundException, OVERARCH, Post
+from Story import getStoriesFromMessage
 from typing import Callable, Optional, Union
 import discord
 from discord.ext import commands
-from discordUtils import dmError, getEmbed, moderatorCheck
+from discordUtils import dmError, dmErrorAndRaise, getEmbed, getStringArgsFromText, moderatorCheck
 import re
-from Archive import Character, Story
+from Archive import Story, DuplicateException, InvalidNameException, MaxLenException, MaxNameLenException, MaxSpeciesLenException, NotFoundException, OVERARCH, Post
+import sources.textArchive as T_ARCH
+import sources.general as T_GEN
 
 digitsPat = re.compile(r"(\d+)")
 SEPARATOR = "\n\n=====\n\n"
 
 reactionLockedMessageIDs: list[int] = []
 
-class CogArchive(
-    commands.Cog,
-    name=T_ARCH.cogName,
-    description=T_ARCH.cogDescription):
+class CogArchive(commands.Cog, name=T_ARCH.cogName, description=T_ARCH.cogDescription):
     
     def __init__(self):
         self.proxies: dict[int, discord.Member] = {}
@@ -129,8 +127,8 @@ class CogArchive(
         archive = await CogArchive.getArchive(ctx)
         post = archive.getPost(author.id)
         if error and not post:
-            await dmError(ctx, T_ARCH.errorNoPost)
-            raise commands.CheckFailure()
+            await dmErrorAndRaise(ctx, T_ARCH.errorNoPost)
+            return
         return post, author, archive
     
     async def setStoryAttr(self, ctx: commands.Context, targetTitle: str, changer: Callable[[Story], None]):
@@ -139,7 +137,7 @@ class CogArchive(
         try:
             story = post.getStory(targetTitle)
         except NotFoundException:
-            await dmError(ctx, T_ARCH.errorNoStory(targetTitle))
+            await dmErrorAndRaise(ctx, T_ARCH.errorNoStory(targetTitle))
             return
         
         await changer(story)
@@ -160,7 +158,37 @@ class CogArchive(
     async def clearproxy(self, ctx: commands.Context):
         if ctx.author.id in self.proxies:
             self.proxies.pop(ctx.author.id)
-    
+        
+    @commands.command()
+    async def multi(self, ctx: commands.Context, *, allTextCommands: str):
+        """ Performs multiple commands (split apart by newlines) at once. Thanks to love for laying the groundwork for this command. """
+        
+        allTextCommands = [command if not command.startswith(T_GEN.prefix) else command[len(T_GEN.prefix):] for command in allTextCommands.split("\n")]
+        
+        for textCommand in allTextCommands:
+            targetCmdName: str = None
+            args: list[str] = None
+            try:
+                targetCmdName, *args = getStringArgsFromText(textCommand)
+            except SyntaxError:
+                await dmErrorAndRaise(ctx, f"There was an issue with the quotes in your command: `{textCommand}`")
+            
+            commandFn: commands.Command
+            found = False
+            for commandFn in self.get_commands():
+                if targetCmdName == commandFn.name:
+                    try:
+                        print(f"running command {targetCmdName}")
+                        await commandFn(ctx, *args)
+                        found = True
+                    except TypeError:
+                        await dmErrorAndRaise(ctx, T_ARCH.errorNumberArgs(targetCmdName))
+                        raise
+                    break
+            
+            if not found:
+                await dmErrorAndRaise(ctx, T_ARCH.errorInvalidCommand(targetCmdName))
+            
     @commands.command(ignore_extra=False)
     #@commands.cooldown(1, 8 * 60, commands.BucketType.guild)
     async def addstory(self, ctx: commands.Context, storyTitle: str):
@@ -175,11 +203,9 @@ class CogArchive(
             newStory = Story(storyTitle)
             post.addStory(newStory)
         except MaxLenException:
-            await dmError(ctx, T_ARCH.errorLenTitle)
-            return
+            await dmErrorAndRaise(ctx, T_ARCH.errorLenTitle); return
         except DuplicateException:
-            await dmError(ctx, T_ARCH.errorDupStory(storyTitle))
-            return
+            await dmErrorAndRaise(ctx, T_ARCH.errorDupStory(storyTitle)); return
         await CogArchive.updateArchivePost(ctx.channel, post, newStory)
         OVERARCH.write()
     
@@ -191,7 +217,7 @@ class CogArchive(
         try:
             post.removeStory(targetTitle)
         except NotFoundException:
-            await dmError(ctx, T_ARCH.errorNoStory(targetTitle))
+            await dmErrorAndRaise(ctx, T_ARCH.errorNoStory(targetTitle))
             
         await CogArchive.updateArchivePost(ctx.channel, post, None)
         OVERARCH.write()
@@ -205,7 +231,7 @@ class CogArchive(
             try:
                 story.setTitle(newTitle)
             except MaxLenException:
-                await dmError(ctx, T_ARCH.errorLenTitle)
+                await dmErrorAndRaise(ctx, T_ARCH.errorLenTitle)
         await self.setStoryAttr(ctx, targetTitle, changeTitle)
 
     @commands.command(ignore_extra=False)
@@ -218,9 +244,9 @@ class CogArchive(
                 story.addGenre(newGenre.capitalize())
                 print(f"Added {newGenre} genre to {story.cite()}.")
             except InvalidNameException:
-                await dmError(ctx, T_ARCH.errorInvalidGenre(newGenre))
+                await dmErrorAndRaise(ctx, T_ARCH.errorInvalidGenre(newGenre))
             except DuplicateException:
-                await dmError(ctx, T_ARCH.errorDupGenre(story.cite(), newGenre))
+                await dmErrorAndRaise(ctx, T_ARCH.errorDupGenre(story.cite(), newGenre))
         await self.setStoryAttr(ctx, targetTitle, changeGenre)
     
     @commands.command(ignore_extra=False)
@@ -233,7 +259,7 @@ class CogArchive(
                 story.removeGenre(targetGenre)
                 print(f"Removed {targetGenre} genre from {story.cite()}.")
             except NotFoundException:
-                await dmError(ctx, T_ARCH.errorNoGenre(story.cite(), targetGenre))
+                await dmErrorAndRaise(ctx, T_ARCH.errorNoGenre(story.cite(), targetGenre))
         await self.setStoryAttr(ctx, targetTitle, changeGenre)
     
     @commands.command(ignore_extra=False)
@@ -246,7 +272,7 @@ class CogArchive(
                 story.setRating(newRating)
                 print(f"Set rating of {story.cite()} to {newRating}.")
             except InvalidNameException:
-                await dmError(ctx, T_ARCH.errorInvalidRating(story.cite(), newRating))
+                await dmErrorAndRaise(ctx, T_ARCH.errorInvalidRating(story.cite(), newRating))
         await self.setStoryAttr(ctx, targetTitle, changeRating)
     
     @commands.command(ignore_extra=False)
@@ -259,7 +285,7 @@ class CogArchive(
                 story.setRatingReason(newReason)
                 print(f"Set rating reason of {story.cite()} to {newReason}.")
             except MaxLenException:
-                await dmError(ctx, T_ARCH.errorLenReason)
+                await dmErrorAndRaise(ctx, T_ARCH.errorLenReason)
         await self.setStoryAttr(ctx, targetTitle, changeReason)
 
     @commands.command(ignore_extra=False)
@@ -274,11 +300,11 @@ class CogArchive(
                 print(f"Added character with species {newCharSpecies} and name {newCharName} to {story.cite()}.")
             except DuplicateException:
                 andName = "" if not newCharName else f" and the name {newCharName}."
-                await dmError(ctx, T_ARCH.errorDupChar(story.cite(), newCharSpecies, newCharName))
+                await dmErrorAndRaise(ctx, T_ARCH.errorDupChar(story.cite(), newCharSpecies, newCharName))
             except MaxSpeciesLenException:
-                await dmError(ctx, T_ARCH.errorLenCharSpecies)
+                await dmErrorAndRaise(ctx, T_ARCH.errorLenCharSpecies)
             except MaxNameLenException:
-                await dmError(ctx, T_ARCH.errorLenCharName)
+                await dmErrorAndRaise(ctx, T_ARCH.errorLenCharName)
         await self.setStoryAttr(ctx, targetTitle, changeCharacter)
     
     @commands.command(ignore_extra=False)
@@ -291,7 +317,7 @@ class CogArchive(
                 story.removeCharacter(targetCharSpecies, targetCharName)
                 print(f"Removed character with species {targetCharSpecies} and name {targetCharName} from {story.cite()}.")
             except NotFoundException:
-                await dmError(ctx, T_ARCH.errorNoChar(story.cite(), targetCharSpecies, targetCharName))
+                await dmErrorAndRaise(ctx, T_ARCH.errorNoChar(story.cite(), targetCharSpecies, targetCharName))
         await self.setStoryAttr(ctx, targetTitle, changeCharacter)
     
     @commands.command(ignore_extra=False)
@@ -304,7 +330,7 @@ class CogArchive(
                 story.setSummary(newSummary)
                 print(f"Set summary of {story.cite()} to:\n{newSummary}")
             except MaxLenException:
-                await dmError(ctx, T_ARCH.errorLenSummary)
+                await dmErrorAndRaise(ctx, T_ARCH.errorLenSummary)
         await self.setStoryAttr(ctx, targetTitle, changeSummary)
     
     @commands.command(ignore_extra=False)
@@ -316,11 +342,11 @@ class CogArchive(
             try:
                 story.addLink(linkSiteAbbr, linkURL)
             except InvalidNameException:
-                await dmError(ctx, T_ARCH.errorInvalidLinkAbbr(story.cite(), linkSiteAbbr))
+                await dmErrorAndRaise(ctx, T_ARCH.errorInvalidLinkAbbr(story.cite(), linkSiteAbbr))
             except DuplicateException:
-                await dmError(ctx, T_ARCH.errorDupLink(story.cite(), linkSiteAbbr))
+                await dmErrorAndRaise(ctx, T_ARCH.errorDupLink(story.cite(), linkSiteAbbr))
             except MaxLenException:
-                await dmError(ctx, T_ARCH.errorLenLinkURL)
+                await dmErrorAndRaise(ctx, T_ARCH.errorLenLinkURL)
         await self.setStoryAttr(ctx, targetTitle, changeLink)
     
     @commands.command(ignore_extra=False)
@@ -332,11 +358,31 @@ class CogArchive(
             try:
                 story.removeLink(targetSiteAbbr)
             except NotFoundException:
-                await dmError(ctx, T_ARCH.errorNoLink(story.cite(), targetSiteAbbr))
+                await dmErrorAndRaise(ctx, T_ARCH.errorNoLink(story.cite(), targetSiteAbbr))
         await self.setStoryAttr(ctx, targetTitle, changeLink)
     
     @commands.command()
     async def convert(self, ctx: commands.Context):
         """ Adds each story in the archive channel this command is used in to the JSON database. """
         
+        message: discord.Message
         async for message in ctx.channel.history():
+            try:
+                author, oldStories = await getStoriesFromMessage(message)
+            except discord.NotFound:
+                print("Couldn't find member for this message")
+                continue
+            if not oldStories: continue
+            archive = await CogArchive.getArchive(ctx)
+            post = archive.getPost(author.id)
+            if not post:
+                post = archive.createPost(author.id)
+                post.messageID = message.id
+            else:
+                await message.delete()
+            for story in oldStories:
+                try:
+                    post.addStory(story)
+                except DuplicateException:
+                    continue
+            await self.updateArchivePost(ctx.channel, post, None)

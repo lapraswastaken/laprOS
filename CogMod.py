@@ -36,6 +36,7 @@ class CogMod(commands.Cog):
     
     async def handleMessageDelete(self, message: discord.Message):
         if not message.guild.id in IDS.logChannelIDs: return
+        if message.author.bot: return
         
         newDeleteEntries = await CogMod.getNewEntries(message.guild)
         
@@ -52,7 +53,7 @@ class CogMod(commands.Cog):
             else:
                 retrievedDeleterID = newEntry.userID
                 break
-        if retrievedDeleterID != None:
+        if retrievedDeleterID != None and retrievedDeleterID != message.author.id:
             deleter: discord.Member = await message.guild.fetch_member(retrievedDeleterID)
             #if message.guild.id == 546872429621018635 and not 550518609714348034 in [role.id for role in deleter.roles]: return
             

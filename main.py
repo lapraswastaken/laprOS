@@ -81,44 +81,7 @@ logChannels = {
 }
 @bot.event
 async def on_message_delete(message: discord.Message):
-    global oldDeleteEntries # :nauseated:
-    if not message.guild.id in logChannels: return
-    
-    timeout = 300
-    newDeleteEntries: dict[int, MiniEntry]  = {}
-    async for entry in message.guild.audit_logs():
-        timeout -= 1
-        if timeout <= 0:
-            break
-        if not entry.action == discord.AuditLogAction.message_delete: continue
-        
-        newDeleteEntries[entry.id] = MiniEntry(entry.user.id, message.author.id, entry.extra.count)
-    
-    retrievedDeleterID: Optional[int] = None
-    for newID in newDeleteEntries:
-        newEntry = newDeleteEntries[newID]
-        if not newEntry.targetUserID == message.author.id: continue
-        
-        if newID in oldDeleteEntries:
-            oldEntry = oldDeleteEntries[newID]
-            if newEntry.count == oldEntry.count + 1:
-                retrievedDeleterID = newEntry.userID
-                break
-        else:
-            retrievedDeleterID = newEntry.userID
-            break
-    if retrievedDeleterID != None:
-        deleter: discord.Member = await message.guild.fetch_member(retrievedDeleterID)
-        #if message.guild.id == 546872429621018635 and not 550518609714348034 in [role.id for role in deleter.roles]: return
-        
-        channel = message.guild.get_channel(logChannels[message.guild.id])
-        await channel.send(f"> Message from <@{message.author.id}> deleted by <@{deleter.id}>:")
-        await channel.send(
-            message.content,
-            embed=message.embeds[0] if message.embeds else None,
-            files=[await attachment.to_file(use_cached=True) for attachment in message.attachments]
-        )
-    oldDeleteEntries = newDeleteEntries
+    await modCog.handleMessageDelete(message)
     
 @bot.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):

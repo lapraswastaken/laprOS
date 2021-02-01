@@ -362,11 +362,11 @@ class CogArchive(commands.Cog, name=T_ARCH.cogName, description=T_ARCH.cogDescri
     
     @commands.command(hidden=True)
     @commands.check(moderatorCheck)
-    async def convert(self, ctx: commands.Context):
+    async def convert(self, ctx: commands.Context, limit: int=None):
         """ Adds each story in the archive channel this command is used in to the JSON database. """
         
         message: discord.Message
-        async for message in ctx.channel.history():
+        async for message in ctx.channel.history(limit=limit):
             try:
                 author, oldStories = await getStoriesFromMessage(message)
             except discord.NotFound:

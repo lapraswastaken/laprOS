@@ -5,12 +5,12 @@ import json
 import pickle
 import random
 import re
-import  sources.textArchive as T_ARCH
+import  sources.text as T
 from typing import Callable, Optional, Union
 
-def isValidGenre(name: str): return name in T_ARCH.ALL_GENRES
-def isValidSiteAbbr(name: str): return name in T_ARCH.ALL_SITE_ABBREVIATIONS
-def isValidRating(name: str): return name in T_ARCH.ALL_RATINGS
+def isValidGenre(name: str): return name in T.ARCH.ALL_GENRES
+def isValidSiteAbbr(name: str): return name in T.ARCH.ALL_SITE_ABBREVIATIONS
+def isValidRating(name: str): return name in T.ARCH.ALL_RATINGS
 
 class InvalidNameException(Exception): pass
 class DuplicateException(Exception): pass
@@ -74,7 +74,7 @@ class Link(Prioritied):
 class Story(Prioritied):
     def __init__(self, title: str, genres: Optional[list[tuple]]=None, rating: Optional[str]=None, ratingReason: Optional[str]=None, characters: Optional[list[Character]]=None, summary: Optional[str]=None, links: Optional[list[Link]]=None, priority: Optional[int]=None):
         super().__init__(priority)
-        if len(title) > T_ARCH.MAX_TITLE_LEN:
+        if len(title) > T.ARCH.MAX_TITLE_LEN:
             print(f"title '{title}' is too long")
             raise MaxLenException()
         
@@ -133,8 +133,8 @@ class Story(Prioritied):
     def cite(self):
         return f"\"{self.title}\""
     
-    def setTitle(self, newTitle: str):
-        if len(newTitle) > T_ARCH.MAX_TITLE_LEN:
+    def setTitle(self, newTitle: str, ignoreMax: bool=False):
+        if len(newTitle) > T.ARCH.MAX_TITLE_LEN and not ignoreMax:
             raise MaxLenException()
         self.title = newTitle
     
@@ -161,15 +161,15 @@ class Story(Prioritied):
             raise InvalidNameException()
         self.rating = newRating
     
-    def setRatingReason(self, newReason: str):
-        if len(newReason) > T_ARCH.MAX_RATING_REASON_LEN:
+    def setRatingReason(self, newReason: str, ignoreMax: bool=False):
+        if len(newReason) > T.ARCH.MAX_RATING_REASON_LEN and not ignoreMax:
             raise MaxLenException()
         self.ratingReason = newReason
     
-    def addCharacter(self, newSpecies: str, newName: str="", newPriority: Optional[int]=None):
-        if len(newSpecies) > T_ARCH.MAX_CHAR_SPECIES_LEN:
+    def addCharacter(self, newSpecies: str, newName: str="", newPriority: Optional[int]=None, ignoreMax: bool=False):
+        if len(newSpecies) > T.ARCH.MAX_CHAR_SPECIES_LEN and not ignoreMax:
             raise MaxSpeciesLenException()
-        if len(newName) > T_ARCH.MAX_CHAR_NAME_LEN:
+        if len(newName) > T.ARCH.MAX_CHAR_NAME_LEN and not ignoreMax:
             raise MaxNameLenException()
         if newPriority == None and self.characters:
             newPriority = self.characters[-1].increment()
@@ -192,13 +192,13 @@ class Story(Prioritied):
             raise NotFoundException()
         self.characters.remove(fetched)
     
-    def setSummary(self, newSummary: str):
-        if len(newSummary) > T_ARCH.MAX_SUMMARY_LEN:
+    def setSummary(self, newSummary: str, ignoreMax: bool=False):
+        if len(newSummary) > T.ARCH.MAX_SUMMARY_LEN and not ignoreMax:
             raise MaxLenException()
         self.summary = newSummary
     
-    def addLink(self, newSiteAbbr: str, newURL: str, newPriority: Optional[int]=None):
-        if len(newURL) > T_ARCH.MAX_LINK_URL_LEN:
+    def addLink(self, newSiteAbbr: str, newURL: str, newPriority: Optional[int]=None, ignoreMax: bool=False):
+        if len(newURL) > T.ARCH.MAX_LINK_URL_LEN and not ignoreMax:
             raise MaxLenException()
         if not isValidSiteAbbr(newSiteAbbr):
             raise InvalidNameException()

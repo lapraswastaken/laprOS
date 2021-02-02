@@ -3,7 +3,7 @@ from typing import Optional
 import discord
 from discord.ext import commands
 import sources.ids as IDS
-import sources.textMisc as MISC
+import sources.text as T
 
 class MiniEntry:
     def __init__(self, userID: int, targetUserID: int, count: int):
@@ -58,7 +58,7 @@ class CogMod(commands.Cog):
             #if message.guild.id == 546872429621018635 and not 550518609714348034 in [role.id for role in deleter.roles]: return
             
             channel: discord.TextChannel = message.guild.get_channel(IDS.logChannelIDs[message.guild.id])
-            await channel.send(MISC.deletedMessageText(message.author.id, deleter.id))
+            await channel.send(T.MOD.deletedMessageText(message.author.id, deleter.id))
             await channel.send(
                 message.content,
                 embed=message.embeds[0] if message.embeds else None,

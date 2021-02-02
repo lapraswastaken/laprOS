@@ -1,63 +1,58 @@
 
-from Archive import OVERARCH
 from typing import Union
-from Story import Story
 import random
 from discordUtils import getLaprOSEmbed, moderatorCheck
 import discord
 from discord.ext import commands
-import sources.textArchive as T_ARCH
-import sources.textRetrieval as T_RETR
+
+from Archive import OVERARCH, Story
 from CogArchive import CogArchive
+import sources.text as T
 
 class CogRetrieval(
     commands.Cog,
-    name=T_RETR.cogName,
-    description=T_RETR.cogDescription):
+    name=T.RETR.cogName,
+    description=T.RETR.cogDescription):
     
     @staticmethod
     def getStoryEmbed(story: Story, author: discord.Member, message: discord.Message):
+        """ Formats and returns an embed with the custom logo, displaying a story's title, its author, its summary, and the message it belongs to. """
+        
         return getLaprOSEmbed(
-            T_RETR.embedStoryTitle(story.title),
-            T_RETR.embedStoryDescription(author.display_name, story.summary, message.jump_url)
+            T.RETR.embedStoryTitle(story.title),
+            T.RETR.embedStoryDescription(author.display_name, story.summary, message.jump_url)
         )
     
-    @commands.command(name=T_RETR.cmdSetArchiveChannel, help=T_RETR.cmdSetArchiveChannelHelp, hidden=True)
+    @commands.command(**T.RETR.cmd.setArchiveChannel, hidden=True)
     @commands.check(moderatorCheck)
-    async def setarchivechannel(self, ctx: commands.Context, channel: discord.TextChannel):
-        """ Sets the archive channel for this server. """
+    async def setArchiveChannel(self, ctx: commands.Context, channel: discord.TextChannel):
         
         OVERARCH.addArchive(ctx.guild.id, channel.id)
         OVERARCH.write()
 
-    @commands.command()
-    async def archiveguide(self, ctx: commands.Context):
-        """ Show a help message that explains how to add a story to the archive. """
+    @commands.command(**T.RETR.cmd.archiveGuide)
+    async def archiveGuide(self, ctx: commands.Context):
         
         await ctx.send(embed=getLaprOSEmbed(
-            T_RETR.embedGuideTitle,
-            T_RETR.embedGuideDescription
+            T.RETR.embedGuideTitle,
+            T.RETR.embedGuideDescription
         ))
     
-    @commands.command()
-    async def listgenres(self, ctx: commands.Context):
-        """ Get a list of possible story genres to be added with `addgenre`. """
-        
-        await ctx.send(T_RETR.listGenre)
+    @commands.command(**T.RETR.cmd.listGenres)
+    async def listGenres(self, ctx: commands.Context):
+        await ctx.send(T.RETR.listGenre)
     
-    @commands.command()
-    async def listsites(self, ctx: commands.Context):
-        """ Get a list of possible site abbreviations to be added with `addlink`. """
-        
-        await ctx.send(T_RETR.listSiteAbbrs)
+    @commands.command(**T.RETR.cmd.listSites)
+    async def listSites(self, ctx: commands.Context):
+        await ctx.send(T.RETR.listSiteAbbrs)
     
-    @commands.command()
-    async def listratings(self, ctx: commands.Context):
+    @commands.command(**T.RETR.cmd.listRatings)
+    async def listRatings(self, ctx: commands.Context):
         """ Get a list of possible ratings to be set by `lap.setrating`. """
         
-        await ctx.send(T_RETR.listRatings)
+        await ctx.send(T.RETR.listRatings)
     
-    @commands.command()
+    @commands.command(**T.RETR.cmd.randomStory)
     async def randomstory(self, ctx: commands.Context):
         """ Get a random listing from the story archive. """
         
@@ -78,7 +73,7 @@ class CogRetrieval(
                 
             attempts -= 1
             if attempts <= 0:
-                await ctx.send(T_RETR.errorRandomStoryFail)
+                await ctx.send(T.RETR.errorRandomStoryFail)
                 return
         
         story = post.getRandomStory()
@@ -97,6 +92,6 @@ class CogRetrieval(
         message: discord.Message = await archiveChannel.fetch_message(post.messageID)
         
         await ctx.send(embed=getLaprOSEmbed(
-            T_RETR.embedSearchAuthorTitle(target.display_name),
-            T_RETR.embedSearchAuthorDescription(None if not message else message.jump_url)
+            T.RETR.embedSearchAuthorTitle(target.display_name),
+            T.RETR.embedSearchAuthorDescription(None if not message else message.jump_url)
         ))

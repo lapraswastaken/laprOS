@@ -4,27 +4,26 @@ import discord
 from discord.ext import commands
 from discordUtils import dmError
 import os
-from typing import Optional, Union
+from typing import Union
 
 from Archive import OVERARCH
 from CogRetrieval import CogRetrieval
-from CogMain import CogMain
+from CogMisc import CogMisc
 from CogArchive import CogArchive
 from CogMod import CogMod
-import sources.general as T_GEN
-import sources.textArchive as T_ARCH
-import sources.textErrors as T_ERR
+from sources.general import BOT_PREFIX
+import sources.text as T
 
 bot = commands.Bot(
-    command_prefix=T_GEN.prefix,
+    command_prefix=BOT_PREFIX,
     case_insensitive=True,
     help_command=commands.DefaultHelpCommand(verify_checks=False)
 )
-mainCog = CogMain(bot)
+miscCog = CogMisc(bot)
 storyCog =  CogArchive()
 archiveCog = CogRetrieval()
 modCog = CogMod()
-bot.add_cog(mainCog)
+bot.add_cog(miscCog)
 bot.add_cog(storyCog)
 bot.add_cog(archiveCog)
 bot.add_cog(modCog)
@@ -46,22 +45,22 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 @bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
     if user.bot: return
-    await mainCog.handleVoteAdd(reaction, user)
+    await miscCog.handleVoteAdd(reaction, user)
 
 @bot.event
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
-    await mainCog.handleVoteRemove(payload.message_id, payload.emoji, payload.user_id)
+    await miscCog.handleVoteRemove(payload.message_id, payload.emoji, payload.user_id)
 
 @bot.event
 async def on_message_delete(message: discord.Message):
     if message.author.bot: return
-    await mainCog.handleMessageDelete(message)
+    await miscCog.handleMessageDelete(message)
     await modCog.handleMessageDelete(message)
 
 @bot.event
 async def on_message(message: discord.Message):
     if OVERARCH.isValidChannelID(message.channel.id):
-        if not (message.author.id == bot.user.id and (message.content.startswith(T_ARCH.messagePrefix) or message.content.startswith(T_ARCH.messageWait))):
+        if not (message.author.id == bot.user.id and (message.content.startswith(T.ARCH.archivePostMessagePrefix) or message.content.startswith(T.ARCH.archivePostMessageWait))):
             await message.delete(delay=0.5)
     if message.author.bot: return
     await bot.process_commands(message)
@@ -86,21 +85,21 @@ async def on_message_delete(message: discord.Message):
 @bot.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):
     if isinstance(error, commands.MissingRequiredArgument):
-        await dmError(ctx, T_ERR.missingRequiredArgument(error.param.name))
+        await dmError(ctx, T.ERR.missingRequiredArgument(error.param.name))
     elif isinstance(error, commands.TooManyArguments):
-        await dmError(ctx, T_ERR.tooManyArguments)
+        await dmError(ctx, T.ERR.tooManyArguments)
     elif isinstance(error, commands.CommandNotFound):
-        await dmError(ctx, T_ERR.commandNotFound)
+        await dmError(ctx, T.ERR.commandNotFound)
     elif isinstance(error, commands.CommandOnCooldown):
-        await dmError(ctx, T_ERR.commandOnCooldown(int(error.retry_after)))
+        await dmError(ctx, T.ERR.commandOnCooldown(int(error.retry_after)))
         return
     elif isinstance(error, commands.InvalidEndOfQuotedStringError):
-        await dmError(ctx, T_ERR.invalidEndOfQuotedStringError)
+        await dmError(ctx, T.ERR.invalidEndOfQuotedStringError)
         return
     elif isinstance(error, commands.CheckFailure):
         return
     else:
-        await dmError(ctx, T_ERR.unexpected)
+        await dmError(ctx, T.ERR.unexpected)
         raise error
     if ctx.command:
         ctx.command.reset_cooldown(ctx)

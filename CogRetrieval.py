@@ -1,7 +1,9 @@
 
 from typing import Union
 import random
-from discordUtils import getLaprOSEmbed, moderatorCheck
+
+from discord.errors import NotFound
+from discordUtils import fail, getLaprOSEmbed, moderatorCheck, paginate
 import discord
 from discord.ext import commands
 
@@ -9,56 +11,47 @@ from Archive import OVERARCH, Story
 from CogArchive import CogArchive
 import sources.text as T
 
-class CogRetrieval(
-    commands.Cog,
-    name=T.RETR.cogName,
-    description=T.RETR.cogDescription):
+R = T.RETR
+
+class CogRetrieval(commands.Cog, **T.RETR.cog):
     
-    @staticmethod
-    def getStoryEmbed(story: Story, author: discord.Member, message: discord.Message):
-        """ Formats and returns an embed with the custom logo, displaying a story's title, its author, its summary, and the message it belongs to. """
-        
-        return getLaprOSEmbed(
-            T.RETR.embedStoryTitle(story.title),
-            T.RETR.embedStoryDescription(author.display_name, story.summary, message.jump_url)
-        )
-    
-    @commands.command(**T.RETR.cmd.setArchiveChannel, hidden=True)
+    @commands.command(**R.setArchiveChannel.meta, hidden=True)
     @commands.check(moderatorCheck)
     async def setArchiveChannel(self, ctx: commands.Context, channel: discord.TextChannel):
         
         OVERARCH.addArchive(ctx.guild.id, channel.id)
         OVERARCH.write()
-
-    @commands.command(**T.RETR.cmd.archiveGuide)
-    async def archiveGuide(self, ctx: commands.Context):
-        
-        await ctx.send(embed=getLaprOSEmbed(
-            T.RETR.embedGuideTitle,
-            T.RETR.embedGuideDescription
-        ))
+        await ctx.send(R.setArchiveChannel.success)
     
-    @commands.command(**T.RETR.cmd.listGenres)
+    @commands.command(**R.setArchive.meta)
+    async def setArchive(self, ctx: commands.Context):
+        if not ctx.guild:
+            fail(R.setArchive.errorDM)
+        OVERARCH.setArchivePref(ctx.author.id, ctx.guild.id)
+        OVERARCH.write()
+        await ctx.send(R.setArchive.success(ctx.guild.name))
+    
+    @commands.command(**R.listGenres.meta)
     async def listGenres(self, ctx: commands.Context):
-        await ctx.send(T.RETR.listGenre)
+        await ctx.send(R.listGenres.success)
     
-    @commands.command(**T.RETR.cmd.listSites)
+    @commands.command(**R.listSites.meta)
     async def listSites(self, ctx: commands.Context):
-        await ctx.send(T.RETR.listSiteAbbrs)
+        await ctx.send(R.listSites.success)
     
-    @commands.command(**T.RETR.cmd.listRatings)
+    @commands.command(**R.listRatings.meta)
     async def listRatings(self, ctx: commands.Context):
-        """ Get a list of possible ratings to be set by `lap.setrating`. """
-        
-        await ctx.send(T.RETR.listRatings)
+        await ctx.send(R.listRatings.success)
+
+    @commands.command(**R.archiveGuide.meta)
+    async def archiveGuide(self, ctx: commands.Context):
+        await paginate(ctx, [{"embed": getLaprOSEmbed(**page)} for page in R.archiveGuide.pages])
     
-    @commands.command(**T.RETR.cmd.randomStory)
+    @commands.command(**R.randomStory.meta)
     async def randomstory(self, ctx: commands.Context):
-        """ Get a random listing from the story archive. """
-        
         archive = await CogArchive.getArchive(ctx)
         
-        archiveChannel: discord.TextChannel = ctx.guild.get_channel(archive.channelID)
+        archiveChannel: discord.TextChannel = discord.utils.get(await ctx.guild.fetch_channels(), id=archive.channelID)
         post = archive.getRandomPost()
         attempts = 100
         while True:
@@ -73,25 +66,32 @@ class CogRetrieval(
                 
             attempts -= 1
             if attempts <= 0:
-                await ctx.send(T.RETR.errorRandomStoryFail)
-                return
+                await fail(R.randomStory.error)
         
         story = post.getRandomStory()
-        await ctx.send(embed=CogRetrieval.getStoryEmbed(story, author, message))
+        await ctx.send(embed=getLaprOSEmbed(**R.randomStory.embed(story.title, author.display_name, story.summary, message.jump_url)))
     
-    @commands.command()
-    async def searchbyauthor(self, ctx: commands.Context, target: Union[discord.Member, int]):
-        """ Get a link to the archive post for a given user. The argument can be the mention of a user or the user's ID. """
+    @commands.command(**R.searchByAuthor.meta)
+    async def searchbyauthor(self, ctx: commands.Context, *, target: Union[discord.Member, int, str]):
         
         if isinstance(target, int):
-            target: discord.Member = await ctx.guild.fetch_member(target)
+            try:
+                target: discord.Member = await ctx.guild.fetch_member(target)
+            except NotFound:
+                fail(R.searchByAuthor.errorID(target))
+        if isinstance(target, str):
+            def check(member: discord.Member):
+                return member.display_name.startswith(target)
+            found: discord.Member = discord.utils.find(check, ctx.guild.members)
+            if not found:
+                fail(R.searchByAuthor.errorName(target))
+            target = found
         
         archive = await CogArchive.getArchive(ctx)
-        archiveChannel: discord.TextChannel = await ctx.guild.get_channel(archive.channelID)
+        archiveChannel: discord.TextChannel = discord.utils.get(await ctx.guild.fetch_channels(), id=archive.channelID)
         post = archive.getPost(target.id)
+        if not post:
+            fail(R.searchByAuthor.errorPost(target.display_name))
         message: discord.Message = await archiveChannel.fetch_message(post.messageID)
         
-        await ctx.send(embed=getLaprOSEmbed(
-            T.RETR.embedSearchAuthorTitle(target.display_name),
-            T.RETR.embedSearchAuthorDescription(None if not message else message.jump_url)
-        ))
+        await ctx.send(embed=getLaprOSEmbed(R.searchByAuthor.embed (target.display_name, message.jump_url)))

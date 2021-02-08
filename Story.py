@@ -10,7 +10,7 @@ ratingPat = re.compile(r"(.+?)(?: \((.+)\))?")
 charsPat = re.compile(r" ?(.+?)(?: \| (.+?))?(?:,|$)")
 linkPat = re.compile(r"- (\w+): <(.+)>")
     
-def newFromText(author: discord.Member, text: str):
+def newFromText(text: str):
     lines = text.split("\n")
     getter = lambda i: lines[i].split(":", 1)[1].strip()
     title = getter(0)
@@ -64,6 +64,6 @@ async def getStoriesFromMessage(message: discord.Message) -> list[Story]:
     
     stories: list[Story] = []
     for storyRaw in storiesRaw:
-        story = newFromText(targetAuthor, storyRaw)
+        story = newFromText(storyRaw)
         stories.append(story)
     return targetAuthor, stories

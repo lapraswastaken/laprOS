@@ -5,10 +5,12 @@ import discord
 from discord.ext import commands
 import random
 
-class CogMisc(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-        
+import sources.text as T
+
+M = T.MISC
+
+class CogMisc(commands.Cog, **M.cog):
+    def __init__(self):
         self.votes: dict[int, dict[str, list[int]]] = {}
     
     async def handleVoteAdd(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
@@ -16,9 +18,9 @@ class CogMisc(commands.Cog):
         if not vote: return
         
         emoji = str(reaction.emoji)
-        if not emoji in ["🟢", "🔴"]: await reaction.remove(user)
+        if not emoji in [M.emojiGreen, M.emojiRed]: await reaction.remove(user)
         
-        oppositeReactors = vote["🟢" if emoji == "🔴" else "🔴"]
+        oppositeReactors = vote[M.emojiGreen if emoji == M.emojiRed else M.emojiRed]
         if user.id in oppositeReactors:
             await reaction.remove(user)
         else:
@@ -31,44 +33,33 @@ class CogMisc(commands.Cog):
         
         emoji = str(emoji)
         
-        if emoji in ["🟢", "🔴"] and userID in vote[emoji]:
+        if emoji in [M.emojiGreen, M.emojiRed] and userID in vote[emoji]:
             vote[emoji].remove(userID)
     
-    async def handleMessageDelete(self, message: discord.Message):
-        if message.id in self.votes and message.author.id == 244238135595106305:
-            await message.channel.send("laprOS will not allow Hermit to silence democracy.")
-            ctx = await self.bot.get_context(message)
-            await self.vote(ctx)
-    
-    @commands.command(hidden=True)
-    async def ping(self, ctx: commands.Context):
-        """ Test command. """
-        await ctx.send("Pong")
-    
-    @commands.command(hidden=True)
-    @commands.check(meCheck)
-    async def cat(self, ctx: commands.Context, *args: str):
-        await ctx.message.delete()
-        await ctx.send(" ".join(args))
-    
-    @commands.command()
+    @commands.command(**M.vote.meta)
     async def vote(self, ctx: commands.Context):
-        """ Starts a vote on the command's message. """
-        await ctx.message.add_reaction("🟢")
-        await ctx.message.add_reaction("🔴")
+        await ctx.message.add_reaction(M.emojiGreen)
+        await ctx.message.add_reaction(M.emojiRed)
         self.votes[ctx.message.id] = {
-            "🟢": [],
-            "🔴": []
+            M.emojiGreen: [],
+            M.emojiRed: []
         }
     
-    @commands.command(hidden=True)
-    async def engineer(self, ctx: commands.Context, gaming: str=None):
-        if not gaming == "gaming":
-            await ctx.send("Engineer *what now?*")
-        else:
-            await ctx.send("engineer gaming")
-    
-    @commands.command()
+    @commands.command(**M.coinflip.meta)
     async def coinflip(self, ctx: commands.Context):
         """ Performs a coinflip, heads or tails. """
-        await ctx.send("Heads!" if random.randint(0, 1) else "Tails!")
+        await ctx.send(M.coinflip.heads if random.randint(0, 1) else M.coinflip.tails)
+    
+    @commands.command(**M.ping.meta, hidden=True)
+    async def ping(self, ctx: commands.Context):
+        await ctx.send(M.ping.pong)
+    
+    @commands.command(**M.cat.meta, hidden=True)
+    @commands.check(meCheck)
+    async def cat(self, ctx: commands.Context, *, here: str):
+        await ctx.message.delete()
+        await ctx.send(M.cat.cat(here))
+    
+    @commands.command(**M.sup.meta, hidden=True)
+    async def sup(self, ctx: commands.Context):
+        await ctx.send(M.sup.meta)

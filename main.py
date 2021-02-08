@@ -1,8 +1,9 @@
 
+from Help import Help
 import datetime
 import discord
 from discord.ext import commands
-from discordUtils import dmError
+from discordUtils import dm, handleReactionAdd, laprOSException
 import os
 from typing import Union
 
@@ -14,18 +15,22 @@ from CogMod import CogMod
 from sources.general import BOT_PREFIX
 import sources.text as T
 
+intents: discord.Intents = discord.Intents.default()
+intents.members = True
+
 bot = commands.Bot(
     command_prefix=BOT_PREFIX,
     case_insensitive=True,
-    help_command=commands.DefaultHelpCommand(verify_checks=False)
+    help_command=Help(verify_checks=False),
+    intents=intents
 )
-miscCog = CogMisc(bot)
-storyCog =  CogArchive()
-archiveCog = CogRetrieval()
+archiveCog =  CogArchive(bot)
+retrievalCog = CogRetrieval()
+miscCog = CogMisc()
 modCog = CogMod()
-bot.add_cog(miscCog)
-bot.add_cog(storyCog)
 bot.add_cog(archiveCog)
+bot.add_cog(retrievalCog)
+bot.add_cog(miscCog)
 bot.add_cog(modCog)
 
 @bot.event
@@ -37,15 +42,18 @@ async def on_ready():
             await modCog.handleOnReady(guild)
         except discord.Forbidden:
             print(f"Missing permission to view audit logs in {guild.name}")
+    
+    await bot.change_presence(activity=discord.Game(T.MAIN.presence))
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
-    await CogArchive.handleReactionAdd(payload)
+    await archiveCog.handleReactionAdd(payload)
 
 @bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
     if user.bot: return
     await miscCog.handleVoteAdd(reaction, user)
+    await handleReactionAdd(reaction, user)
 
 @bot.event
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
@@ -74,32 +82,45 @@ class MiniEntry:
 
 oldDeleteEntries: dict[int, MiniEntry] = {}
 
-logChannels = {
-    798023066718175252: 804124151299178537,
-    546872429621018635: 804087913272705025
-}
 @bot.event
 async def on_message_delete(message: discord.Message):
     await modCog.handleMessageDelete(message)
+
+async def dmIfArchive(ctx: commands.Context, message: str):
+    """ Sends a direct message to the Context's author if the command used in the Context is a command in the Archive Cog, otherwise sends the message straight to the Context's channel. """
     
+    if ctx.command and ctx.command.cog == archiveCog:
+        await dm(ctx, message)
+    else:
+        await ctx.send(message)
+
 @bot.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):
     if isinstance(error, commands.MissingRequiredArgument):
-        await dmError(ctx, T.ERR.missingRequiredArgument(error.param.name))
+        await dmIfArchive(ctx, T.MAIN.missingRequiredArgument(error.param.name))
     elif isinstance(error, commands.TooManyArguments):
-        await dmError(ctx, T.ERR.tooManyArguments)
+        await dmIfArchive(ctx, T.MAIN.tooManyArguments)
     elif isinstance(error, commands.CommandNotFound):
-        await dmError(ctx, T.ERR.commandNotFound)
+        await dmIfArchive(ctx, T.MAIN.commandNotFound)
     elif isinstance(error, commands.CommandOnCooldown):
-        await dmError(ctx, T.ERR.commandOnCooldown(int(error.retry_after)))
+        await dmIfArchive(ctx, T.MAIN.commandOnCooldown(int(error.retry_after)))
         return
     elif isinstance(error, commands.InvalidEndOfQuotedStringError):
-        await dmError(ctx, T.ERR.invalidEndOfQuotedStringError)
-        return
+        await dmIfArchive(ctx, T.MAIN.invalidEndOfQuotedStringError)
     elif isinstance(error, commands.CheckFailure):
-        return
+        print(f"Error: {error}")
+    elif isinstance(error, commands.CommandInvokeError):
+        error: laprOSException = error.original
+        if isinstance(error, laprOSException):
+            await dmIfArchive(ctx, error.message)
+            print(f"Error: {error.message}")
+        else:
+            await dmIfArchive(ctx, T.MAIN.unexpected)
+            raise error
     else:
-        await dmError(ctx, T.ERR.unexpected)
+        await dmIfArchive(ctx, T.MAIN.unexpected)
+        if ctx.command:
+            ctx.command.reset_cooldown(ctx)
         raise error
     if ctx.command:
         ctx.command.reset_cooldown(ctx)

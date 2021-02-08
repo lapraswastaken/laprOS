@@ -11,7 +11,7 @@ class MiniEntry:
         self.targetUserID = targetUserID
         self.count = count
 
-class CogMod(commands.Cog):
+class CogMod(commands.Cog, **T.MOD.cog):
     def __init__(self):
         self.oldDeleteEntries: dict[int, MiniEntry] = {}
     

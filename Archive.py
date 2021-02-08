@@ -313,13 +313,17 @@ class Post:
         index = self.stories.index(story)
         self.focused = index
     
+    def focusStoryByName(self, name: str):
+        self.focusStory(self.getStory(name))
+    
     def getRandomStory(self):
         return random.choice(self.stories)
 
 class Archive:
-    def __init__(self, channelID: int, posts: Optional[dict[str, dict]]=None):
+    def __init__(self, channelID: int, posts: Optional[dict[str, dict]]=None, guildID: int=None):
         self.channelID = channelID
         self.posts: dict[int, Post] = {}
+        self.guildID = guildID
         if posts:
             for authorID in posts:
                 self.posts[int(authorID)] = Post(**posts[authorID])
@@ -359,12 +363,15 @@ class Archive:
         return allStories
 
 class OverArch:
-    def __init__(self, archives: dict[str, dict]=None):
+    def __init__(self, archives: dict[str, dict]=None, userArchivePrefs: dict[int, int]=None):
         self.archives: dict[int, Archive] = {}
+        self.userArchivePrefs: dict[int, int] = {}
         if archives:
             for guildID in archives:
-                self.archives[int(guildID)] = Archive(**archives[guildID])
-    
+                self.archives[int(guildID)] = Archive(**archives[guildID], guildID=int(guildID))
+        if userArchivePrefs:
+            for userID in userArchivePrefs:
+                self.userArchivePrefs[int(userID)] = userArchivePrefs[userID]
     @staticmethod
     def read():
         with open("./sources/archives.json", "r") as f:
@@ -376,11 +383,17 @@ class OverArch:
     
     def toJSON(self):
         json = {
-            "archives": {}
+            "archives": {},
+            "userArchivePrefs": {}
         }
         for guildID in self.archives:
             json["archives"][guildID] = self.archives[guildID].toJSON()
+        for userID in self.userArchivePrefs:
+            json["userArchivePrefs"][userID] = self.userArchivePrefs[userID]
         return json
+    
+    def setArchivePref(self, userID: int, guildID: int):
+        self.userArchivePrefs[userID] = guildID
         
     def addArchive(self, guildID: int, channelID: int):
         if guildID in self.archives:
@@ -390,6 +403,16 @@ class OverArch:
     
     def getArchive(self, guildID):
         return self.archives.get(guildID)
+    
+    def getGuildIDFromArchive(self, targetArchive: Archive):
+        for guildID, archive in self.archives.items():
+            if archive == targetArchive:
+                return guildID
+    
+    def getArchiveForUser(self, userID: int):
+        if not userID in self.userArchivePrefs:
+            raise NotFoundException()
+        return self.archives[self.userArchivePrefs[userID]]
     
     def isValidChannelID(self, channelID: int):
         return channelID in [archive.channelID for archive in self.archives.values()]

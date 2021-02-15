@@ -17,8 +17,8 @@ setArchiveChannel = Cmd(
     ],
     success = lambda channel: f"Successfully set the archive channel to `{channel}`."
 )
-setArchive = Cmd(
-    "setarchive", "defaultarchive", "setguild", "defaultguild",
+useHere = Cmd(
+    "usehere",
     f"""
         Sets the story archive to use when operating the bot in DMs to the one for the guild in which the command is being issued.
     """,
@@ -29,7 +29,47 @@ setArchive = Cmd(
     errorDM = "This command can't be used in direct messages.",
     success = lambda guild: f"Successfully set your archive preference to the story archive in `{guild}`."
 )
-errorNoArchivePreference = f"You haven't set your archive preference yet. You can do so with the {setArchive.refF()} command."
+whichArchive = Cmd(
+    "whicharchive", "whichguild",
+    f"""
+        Gets the story archive you will use when using the bot in direct messages.
+    """,
+    success = lambda guild: f"In direct messages, you're currently set to use the archive in `{guild}`."
+)
+errorNoArchivePreference = f"You haven't set your archive preference yet. You can do so with the {useHere.refF()} command."
+
+clearProxy = Cmd(
+    "clearproxy",
+    f"Clears the issuer's proxy and allows them to use the {ARCH.cogName} normally.",
+    success = lambda user: f"You are no longer proxying the user `{user}`.",
+    noProxy = "You are not currently proxying any users."
+)
+proxyUser = Cmd(
+    "proxyuser",
+    f"Allows the issuer to edit stories by another user, specified via mention, name, or user ID. While proxying a user, any {ARCH.cogName} commands used to alter a post will be carried out as if the issuer was that user. Use `{clearProxy.name}` to stop proxying a user.",
+    usage = [
+        "laprOS",
+        "785222129061986304",
+        "<@785222129061986304>"
+    ],
+    success = lambda user: f"You are now proxying the user `{user}`."
+)
+getProxy = Cmd(
+    "getproxy", "proxyget", "proxying",
+    f"""
+        Gets the user that the issuer is currently proxying.
+    """,
+    noProxy = "You are not currently proxying any users.",
+    proxy = lambda user: f"You are currently proxying `{user}`."
+)
+dmMe = Cmd(
+    "dmme", "dm",
+    f"""
+        Sends you a direct message.
+        Can be used to start adding/editing a story post in direct messages.
+    """,
+    successs = f"If you intend to use the {ARCH.cogName}'s commands here, and you have not already done so, please use the {useHere.refF()} command in the server with the archive you would like to add to / edit in."
+)
 _listText = lambda item, joinedItems, suffix=True: f"Below is each valid {item}: ```\n{joinedItems}```" + ("" if not suffix else f"\nIf your {item} is not listed here, please let a moderator know.")
 listGenres = Cmd(
     "listgenres",
@@ -55,7 +95,7 @@ archiveGuide = Cmd(
             "description": f"""
                 The main feature of this bot is its story archive. In the archive, stories are displayed in a neat uniform fashion and can be fetched using various search commands. This guide will tell you how to set up a post in your server's archive channel.
                 
-                Commands used in this guide must either be used in your server's archive channel or in direct messages with the bot. To use the commands in direct messages, you must first select the Discord server you want to add a post to via the {setArchive.refF()} command.
+                Commands used in this guide must either be used in your server's archive channel or in direct messages with the bot. To use the commands in direct messages, you must first select the Discord server you want to add a post to via the {useHere.refF()} command.
             """
         },
         {

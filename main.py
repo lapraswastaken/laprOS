@@ -1,9 +1,10 @@
 
+from discord.channel import DMChannel
 from Help import Help
 import datetime
 import discord
 from discord.ext import commands
-from discordUtils import dm, handleReactionAdd, laprOSException
+from discordUtils import dmError, handleReactionAdd, laprOSException
 import os
 from typing import Union
 
@@ -25,7 +26,7 @@ bot = commands.Bot(
     intents=intents
 )
 archiveCog =  CogArchive(bot)
-retrievalCog = CogRetrieval()
+retrievalCog = CogRetrieval(bot, archiveCog)
 miscCog = CogMisc()
 modCog = CogMod()
 bot.add_cog(archiveCog)
@@ -90,7 +91,7 @@ async def dmIfArchive(ctx: commands.Context, message: str):
     """ Sends a direct message to the Context's author if the command used in the Context is a command in the Archive Cog, otherwise sends the message straight to the Context's channel. """
     
     if ctx.command and ctx.command.cog == archiveCog:
-        await dm(ctx, message)
+        await dmError(ctx, message)
     else:
         await ctx.send(message)
 
@@ -131,7 +132,8 @@ async def on_disconnect():
 
 @bot.check
 async def globalCheck(ctx: commands.Context):
-    print(f"[{str(datetime.datetime.now().time())[:-7]}] {ctx.message.author.name}: {ctx.message.content}")
+    channelName = ctx.channel.name if not isinstance(ctx.channel, discord.DMChannel) else "DM"
+    print(f"[{str(datetime.datetime.now().time())[:-7]}, #{channelName}] {ctx.message.author.name}: {ctx.message.content}")
     return True
 
 bot.run(os.getenv("DISCORD_SECRET_PWUBOT"))

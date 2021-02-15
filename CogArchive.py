@@ -1,18 +1,29 @@
 
-from discord.channel import DMChannel
-from Story import getStoriesFromMessage
-from typing import Callable, Optional, Union
 import discord
 from discord.ext import commands
-from discordUtils import dm, fail, getEmbed, getStringArgsFromText, moderatorCheck
-import re
-from Archive import Archive, Story, DuplicateException, InvalidNameException, MaxLenException, MaxNameLenException, MaxSpeciesLenException, NotFoundException, OVERARCH, Post
+from typing import Callable, Optional, Union
+import time
+
+from Archive import Story, DuplicateException, InvalidNameException, MaxLenException, MaxNameLenException, MaxSpeciesLenException, NotFoundException, OVERARCH, Post
+from discordUtils import fail, fetchChannel, getEmbed, getStringArgsFromText, laprOSException, moderatorCheck
 import sources.text as T
 from sources.general import BOT_PREFIX
+from Story import getStoriesFromMessage
 
 A = T.ARCH
 
 reactionLockedMessageIDs: list[int] = []
+
+def getArchiveFromContext(ctx: commands.Context, asAuthor: Optional[discord.Member]=None):
+    if isinstance(ctx.channel, discord.DMChannel):
+        archive = OVERARCH.getArchiveForUser(ctx.author.id if not asAuthor else asAuthor.id)
+        if not archive:
+            fail(A.errorNoArchiveChannelDM)
+    else:
+        archive = OVERARCH.getArchiveForGuild(ctx.guild.id)
+        if not archive:
+            fail(A.errorNoArchiveChannel)
+    return archive
 
 class CogArchive(commands.Cog, **A.cog):
     
@@ -21,19 +32,34 @@ class CogArchive(commands.Cog, **A.cog):
         
         self.proxies: dict[int, discord.Member] = {}
         self.dmPosts: dict[int, discord.Message] = {}
+        self.addStoryCooldown = 0
     
     async def cog_check(self, ctx: commands.Context):
+        
         if isinstance(ctx.channel, discord.DMChannel):
+            try:
+                OVERARCH.getGuildIDForUser(ctx.author.id)
+            except NotFoundException:
+                fail(T.RETR.errorNoArchivePreference)
             return True
+        else:
+            if not ctx.author.id in OVERARCH.userArchivePrefs:
+                OVERARCH.setArchivePref(ctx.author.id, ctx.guild.id)
+                OVERARCH.write()
         if not OVERARCH.isValidChannelID(ctx.channel.id):
             await ctx.send(content=A.errorNotInArchiveChannel)
             return False
         return True
     
-    async def checkIsMemberProxied(self, author: discord.Member) -> discord.Member:
+    async def checkIsUserProxied(self, author: Union[discord.User, discord.Member]) -> discord.Member:
         if not author.id in self.proxies:
             return author
-        return await author.guild.fetch_member(self.proxies[author.id].id)
+        if isinstance(author, discord.Member):
+            return await author.guild.fetch_member(self.proxies[author.id].id)
+        else:
+            guildID = OVERARCH.getGuildIDForUser(author.id)
+            guild = await self.bot.fetch_guild(guildID)
+            return await guild.fetch_member(self.proxies[author.id].id)
     
     @staticmethod
     async def parseCharacter(ctx: commands.Context, text: str) -> tuple[str, str]:
@@ -48,21 +74,19 @@ class CogArchive(commands.Cog, **A.cog):
     
     async def handleReactionAdd(self, payload: discord.RawReactionActionEvent):
         if payload.message_id in reactionLockedMessageIDs: return
-        if not payload.guild_id:
-            if payload.message_id in self.dmPosts:
-                payload.guild_id = self.dmPosts[payload.message_id].channel.guild.id
-            else:
-                return
-        archive = OVERARCH.getArchive(payload.guild_id)
-        if (not archive) or (not payload.member) or (payload.member.bot): return
+        if payload.member and payload.member.bot: return
         
-        archiveChannel: discord.TextChannel = payload.member.guild.get_channel(payload.channel_id)
-        message: discord.Message = await archiveChannel.fetch_message(payload.message_id)
+        if payload.guild_id:
+            archive = OVERARCH.getArchiveForGuild(payload.guild_id)
+        else:
+            archive = OVERARCH.getArchiveForUser(payload.user_id)
+        if not archive: return
+        post = archive.getPostByMessageID(payload.message_id)
         
-        try:
-            post = archive.getPostByMessageID(payload.message_id)
-        except NotFoundException:
-            return
+        guild = await self.bot.fetch_guild(archive.guildID)
+        
+        archiveChannel: discord.TextChannel = await fetchChannel(guild, archive.channelID)
+        message: discord.Message = await archiveChannel.fetch_message(post.messageID)
         
         emoji = str(payload.emoji)
         
@@ -85,6 +109,9 @@ class CogArchive(commands.Cog, **A.cog):
         reactionLockedMessageIDs.append(message.id)
         
         story = post.getFocusedStory()
+        if not story:
+            await message.delete()
+            return
         if len(post.stories) > 1:
             await message.edit(
                 content=A.archivePostMessageBody(post.authorID, story.format()[:1800]),
@@ -109,22 +136,28 @@ class CogArchive(commands.Cog, **A.cog):
         
         reactionLockedMessageIDs.remove(message.id)
     
-    @staticmethod
-    async def getArchive(ctx: commands.Context) -> Archive:
-        """ Gets the Archive object associated with a context's guild. """
-        if isinstance(ctx.channel, discord.DMChannel):
-            try:
-                archive = OVERARCH.getArchiveForUser(ctx.author.id)
-            except NotFoundException:
-                fail(T.RETR.errorNoArchivePreference)
-        else:
-            archive = OVERARCH.getArchive(ctx.guild.id)
-        if not archive:
-            fail(A.errorNoArchiveChannel)
-        return archive
+    async def getPost(self, ctx: commands.Context):
+        """ Gets the post from the context. If `error`, if a post isn't found, the context is notified and an error is thrown. """
         
-    async def updateArchivePost(self, archiveChannel: discord.TextChannel, post: Post, story: Optional[Story]):
-        """ Updates the messages in a give archive text channel that make up a given post. """
+        author = await self.checkIsUserProxied(ctx.author)
+        archive = getArchiveFromContext(ctx, author)
+        if not archive:
+            fail(T.RETR.errorNoArchivePreference)
+        post = archive.getPost(author.id)
+        if not post:
+            fail(A.errorNoPost)
+        return post
+    
+    async def updatePost(self, ctx: commands.Context, changer: Callable[[Story], None]=None):
+        """ Calls the `changer` function on the currently focused story in the post linked to the context. """
+        
+        post = await self.getPost(ctx)
+        story = post.getFocusedStory()
+        
+        guild: discord.Guild = await self.bot.fetch_guild(post.archive.guildID)
+        archiveChannel: discord.TextChannel = discord.utils.get(await guild.fetch_channels(), id=post.archive.channelID)
+        if not archiveChannel:
+            fail(A.errorNoArchiveChannel)
         
         if not story: # this happens when deleting a story
             # focus the first story for the author if it exists
@@ -137,12 +170,14 @@ class CogArchive(commands.Cog, **A.cog):
                 print("Deleted story was the last in the post, deleting message")
                 message = await archiveChannel.fetch_message(post.messageID)
                 await message.delete()
-                post.messageID = None
+                post.delete()
                 return
             # this shouldn't happen
             else:
-                print("Deleted a story for a post with a nonexistent message ID. How does that work...?")
-                return
+                fail("Deleted a story for a post with a nonexistent message ID. How does that work...?")
+        
+        if changer:
+            await changer(story)
         
         try:
             message = await archiveChannel.fetch_message(post.messageID)
@@ -154,61 +189,24 @@ class CogArchive(commands.Cog, **A.cog):
             await message.add_reaction(T.UTIL.emojiLast)
             post.messageID = message.id
         
-        post.focusStory(story)
         await self.updateFocusedStory(message, post)
-    
-    async def getPostAuthorArchive(self, ctx: commands.Context, error: bool=True) -> tuple[Post, discord.User, Archive]:
-        """ Gets the post, the author, and the archive from the context. If `error`, if a post isn't found, the context is notified and an error is thrown. """
-        
-        author = await self.checkIsMemberProxied(ctx.author)
-        archive = await CogArchive.getArchive(ctx)
-        post = archive.getPost(author.id)
-        if error and not post:
-            fail(A.errorNoPost)
-        return post, author, archive
-    
-    async def setStoryAttr(self, ctx: commands.Context, changer: Callable[[Story], None]=None):
-        """ Calls the `changer` function on the currently focused story in the post linked to the context. """
-        
-        post, _, archive = await self.getPostAuthorArchive(ctx)
-
-        story = post.getFocusedStory()
-        
-        if changer:
-            await changer(story)
-        
-        guild: discord.Guild = await self.bot.fetch_guild(archive.guildID)
-        channel: discord.TextChannel = discord.utils.get(await guild.fetch_channels(), id=archive.channelID)
-        if not channel:
-            fail(A.errorNoArchiveChannel)
-        await self.updateArchivePost(channel, post, story)
         OVERARCH.write()
     
-    @commands.command(**A.proxyUser.meta, ignore_extra=False, hidden=True)
-    @commands.check(moderatorCheck)
-    async def proxyUser(self, ctx: commands.Context, member: Union[discord.Member, int]):
-        if isinstance(member, int):
-            member = await ctx.guild.get_member(member)
-        self.proxies[ctx.author.id] = member
-        await dm(ctx, A.proxyUser.success(member.id))
-    
-    @commands.command(**A.clearProxy.meta, ignore_extra=False, hidden=True)
-    @commands.check(moderatorCheck)
-    async def clearProxy(self, ctx: commands.Context):
-        if ctx.author.id in self.proxies:
-            id = self.proxies.pop(ctx.author.id)
-            await dm(ctx, A.clearProxy.success(id))
-        else:
-            await dm(ctx, A.clearProxy.noProxy)
-    
     @commands.command(**A.focus.meta)
-    async def focus(self, ctx: commands.Context, *, targetStory: str):
-        post, *_ = await self.getPostAuthorArchive(ctx)
-        try:
-            post.focusStoryByName(targetStory)
-        except NotFoundException:
-            fail(A.focus.errorNotFound(targetStory))
-        await self.setStoryAttr(ctx)
+    async def focus(self, ctx: commands.Context, *, targetStory: Union[int, str]):
+        post = await self.getPost(ctx)
+        if isinstance(targetStory, int):
+            targetStory -= 1
+            try:
+                post.focusByIndex(targetStory)
+            except MaxLenException:
+                fail(A.focus.errorIndex(targetStory))
+        else:
+            try:
+                post.focusByTitle(targetStory)
+            except NotFoundException:
+                fail(A.focus.errorNotFound(targetStory))
+        await self.updatePost(ctx)
         
     @commands.command(**A.multi.meta)
     async def multi(self, ctx: commands.Context, *, allTextCommands: str):
@@ -243,8 +241,7 @@ class CogArchive(commands.Cog, **A.cog):
     async def getMyPost(self, ctx: commands.Context):
         if not isinstance(ctx.channel, discord.DMChannel):
             fail(A.getMyPost.errorNoDM)
-        post, _, archive = await self.getPostAuthorArchive(ctx)
-        guildID = OVERARCH.getGuildIDFromArchive(archive)
+        post = await self.getPost(ctx)
         
         message: discord.Message = await ctx.send(A.archivePostMessageWait)
         self.dmPosts[post.messageID] = message
@@ -252,37 +249,54 @@ class CogArchive(commands.Cog, **A.cog):
         
             
     @commands.command(**A.addStory.meta)
-    @commands.cooldown(1, 8 * 60, commands.BucketType.guild)
     async def addStory(self, ctx: commands.Context, *storyTitle: str):
         # not kwarg so it works with multi
         storyTitle = " ".join(storyTitle)
-        
-        post, author, archive = await self.getPostAuthorArchive(ctx, False)
-        if not post:
+        now = time.time()
+        author = await self.checkIsUserProxied(ctx.author)
+        isNewPost = False
+        try:
+            post = await self.getPost(ctx)
+        except laprOSException:
+            print("Creating new post.")
+            archive = getArchiveFromContext(ctx, author)
             post = archive.createPost(author.id)
+        
+            last = self.addStoryCooldown
+            diff = now - last
+            print(diff)
+            diff = (60 * 10) - diff
+            if diff > 0:
+                mins = round(diff / 60, 2)
+                fail(A.addStory.errorCooldown(mins))
+            isNewPost = True
         
         try:
             newStory = Story(storyTitle)
             post.addStory(newStory)
+            post.focusByTitle(newStory.title)
         except MaxLenException:
             fail(A.addStory.errorLen(len(storyTitle))); return
         except DuplicateException:
             fail(A.addStory.errorDup(storyTitle)); return
-        await self.setStoryAttr(ctx)
-        OVERARCH.write()
+        await self.updatePost(ctx)
+        if isinstance(ctx.channel, discord.DMChannel):
+            await self.getMyPost(ctx)
+        
+        if isNewPost:
+            self.addStoryCooldown = now
     
     @commands.command(**A.removeStory.meta)
     async def removeStory(self, ctx: commands.Context, *targetTitle: str):
         targetTitle = " ".join(targetTitle)
-        post, *_ = await self.getPostAuthorArchive(ctx)
+        post = await self.getPost(ctx)
         
         try:
             post.removeStory(targetTitle)
         except NotFoundException:
             fail(A.removeStory.errorNotFound(targetTitle))
             
-        await self.setStoryAttr(ctx)
-        OVERARCH.write()
+        await self.updatePost(ctx)
     
     @commands.command(**A.setTitle.meta)
     async def setTitle(self, ctx: commands.Context, *newTitle: str):
@@ -293,7 +307,7 @@ class CogArchive(commands.Cog, **A.cog):
                 story.setTitle(newTitle)
             except MaxLenException:
                 fail(A.setTitle.errorLen(len(newTitle)))
-        await self.setStoryAttr(ctx, changeTitle)
+        await self.updatePost(ctx, changeTitle)
 
     @commands.command(**A.addGenre.meta)
     async def addGenre(self, ctx: commands.Context, *newGenre: str):
@@ -306,7 +320,7 @@ class CogArchive(commands.Cog, **A.cog):
                     fail(A.addGenre.errorInvalid(genreName))
                 except DuplicateException:
                     fail(A.addGenre.errorDup(story.cite(), genreName))
-        await self.setStoryAttr(ctx, changeGenre)
+        await self.updatePost(ctx, changeGenre)
     
     @commands.command(**A.removeGenre.meta)
     async def removeGenre(self, ctx: commands.Context, *targetGenre: str):
@@ -317,17 +331,19 @@ class CogArchive(commands.Cog, **A.cog):
                     print(f"Removed {genreName} genre from {story.cite()}.")
                 except NotFoundException:
                     fail(A.removeGenre.errorNotFound(story.cite(), genreName))
-        await self.setStoryAttr(ctx, changeGenre)
+        await self.updatePost(ctx, changeGenre)
     
     @commands.command(**A.setRating.meta, ignore_extra=False)
     async def setRating(self, ctx: commands.Context, newRating: str):
+        newRating = newRating.upper()
+        
         async def changeRating(story: Story):
             try:
                 story.setRating(newRating)
                 print(f"Set rating of {story.cite()} to {newRating}.")
             except InvalidNameException:
                 fail(A.setRating.errorInvalid(story.cite(), newRating))
-        await self.setStoryAttr(ctx, changeRating)
+        await self.updatePost(ctx, changeRating)
     
     @commands.command(**A.setRatingReason.meta)
     async def setratingreason(self, ctx: commands.Context, *newReason: str):
@@ -339,7 +355,7 @@ class CogArchive(commands.Cog, **A.cog):
                 print(f"Set rating reason of {story.cite()} to {newReason}.")
             except MaxLenException:
                 fail(A.setRatingReason.errorLen(newReason))
-        await self.setStoryAttr(ctx, changeReason)
+        await self.updatePost(ctx, changeReason)
 
     @commands.command(**A.addCharacter.meta)
     async def addCharacter(self, ctx: commands.Context, *newCharacter: str):
@@ -347,7 +363,7 @@ class CogArchive(commands.Cog, **A.cog):
         
         async def changeCharacter(story: Story):
             try:
-                story.addCharacter(newCharSpecies, newCharName, ignoreMax=moderatorCheck(ctx))
+                story.addCharacter(newCharSpecies, newCharName, ignoreMax=moderatorCheck(ctx, error=False))
                 print(f"Added character with species {newCharSpecies} and name {newCharName} to {story.cite()}.")
             except DuplicateException:
                 fail(A.addCharacter.errorDup(story.cite(), newCharSpecies, newCharName))
@@ -355,7 +371,7 @@ class CogArchive(commands.Cog, **A.cog):
                 fail(A.addCharacter.errorLenSpecies(len(newCharSpecies)))
             except MaxNameLenException:
                 fail(A.addCharacter.errorLenName(len(newCharName)))
-        await self.setStoryAttr(ctx, changeCharacter)
+        await self.updatePost(ctx, changeCharacter)
     
     @commands.command(**A.removeCharacter.meta)
     async def removeCharacter(self, ctx: commands.Context, *targetCharacter: str):
@@ -367,7 +383,7 @@ class CogArchive(commands.Cog, **A.cog):
                 print(f"Removed character with species {targetCharSpecies} and name {targetCharName} from {story.cite()}.")
             except NotFoundException:
                 fail(A.removeCharacter.errorNorFound(story.cite(), targetCharSpecies, targetCharName))
-        await self.setStoryAttr(ctx, changeCharacter)
+        await self.updatePost(ctx, changeCharacter)
     
     @commands.command(**A.setSummary.meta)
     async def setSummary(self, ctx: commands.Context, *newSummary: str):
@@ -376,25 +392,26 @@ class CogArchive(commands.Cog, **A.cog):
         
         async def changeSummary(story: Story):
             try:
-                story.setSummary(newSummary, ignoreMax=moderatorCheck(ctx))
+                story.setSummary(newSummary, ignoreMax=moderatorCheck(ctx, error=False))
                 print(f"Set summary of {story.cite()} to:\n{newSummary}")
             except MaxLenException:
                 fail(A.setSummary.errorLen(len(newSummary)))
-        await self.setStoryAttr(ctx, changeSummary)
+        await self.updatePost(ctx, changeSummary)
     
     @commands.command(**A.addLink.meta, ignore_extra=False)
     async def addlink(self, ctx: commands.Context, linkSiteAbbr: str, linkURL: str):
+        linkSiteAbbr = linkSiteAbbr.upper()
         
         async def changeLink(story: Story):
             try:
-                story.addLink(linkSiteAbbr, linkURL, ignoreMax=moderatorCheck(ctx))
+                story.addLink(linkSiteAbbr, linkURL, ignoreMax=moderatorCheck(ctx, error=False))
             except InvalidNameException:
                 fail(A.addLink.errorInvalid(story.cite(), linkSiteAbbr))
             except DuplicateException:
                 fail(A.addLink.errorDup(story.cite(), linkSiteAbbr))
             except MaxLenException:
                 fail(A.addLink.errorLen(len(linkURL)))
-        await self.setStoryAttr(ctx, changeLink)
+        await self.updatePost(ctx, changeLink)
     
     @commands.command(**A.removeLink.meta, ignore_extra=False)
     async def removelink(self, ctx: commands.Context, targetSiteAbbr: str):
@@ -404,7 +421,7 @@ class CogArchive(commands.Cog, **A.cog):
                 story.removeLink(targetSiteAbbr)
             except NotFoundException:
                 fail(A.removeLink.errorNotFound(story.cite(), targetSiteAbbr))
-        await self.setStoryAttr(ctx, changeLink)
+        await self.updatePost(ctx, changeLink)
     
     @commands.command(**A.convert.meta, hidden=True)
     @commands.check(moderatorCheck)
@@ -430,10 +447,10 @@ class CogArchive(commands.Cog, **A.cog):
                     post.addStory(story)
                 except DuplicateException:
                     continue
-            await self.setStoryAttr(ctx)
+            await self.updatePost(ctx)
 
     @commands.command(**A.refreshPost.meta, hidden=True)
     @commands.check(moderatorCheck)
     async def refreshPost(self, ctx: commands.Context):
         async def dummy(_): pass
-        await self.setStoryAttr(ctx, dummy)
+        await self.updatePost(ctx, dummy)

@@ -1,5 +1,5 @@
 
-from Archive import OVERARCH
+from Archive import NotFoundException, OVERARCH
 import discord
 from discord.ext import commands
 from discord import Embed
@@ -42,7 +42,7 @@ def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[s
     e.set_thumbnail(url=LAPROS_GRAPHIC_URL)
     return e
 
-async def dm(ctx: commands.Context, errorText: str):
+async def dmError(ctx: commands.Context, errorText: str):
     """ Sends a message to the author of a command that encountered an error. """
     if isinstance(ctx.channel, discord.DMChannel):
         await ctx.author.send(T.UTIL.dmMessage(errorText))
@@ -53,20 +53,10 @@ def fail(errorText: str):
     """ Sends a message to the author of a command that encountered an error, then raises a commands.CheckFailure. """
     raise laprOSException(errorText)
 
-async def getGuildFromCtx(ctx: commands.Context) -> Optional[discord.Guild]:
-    if isinstance(ctx.channel, discord.DMChannel):
-        matched: list[int] = []
-        for guildID, archive in OVERARCH.archives.items():
-            for authorID in archive.posts:
-                if authorID == ctx.author.id:
-                    matched.append(guildID)
-        
-        if len(matched) == 1:
-            return await ctx.bot.fetch_guild(*matched)
-        else:
-            archivePref = OVERARCH.userArchivePrefs.get(ctx.author.id)
-            if not archivePref:
-                fail()
+async def fetchChannel(guild: discord.Guild, channelID: int):
+    channels = await guild.fetch_channels()
+    print(channels)
+    return discord.utils.get(channels, id=channelID)
 
 def checkIsBotID(id: int):
     return id in BOT_USER_IDS
@@ -74,9 +64,13 @@ def checkIsBotID(id: int):
 def meCheck(ctx: commands.Context):
     return ctx.author.id == MY_USER_ID
 
-def moderatorCheck(ctx: commands.Context):
+def moderatorCheck(ctx: commands.Context, error: bool=True):
     """ Checks to see if the context's author is a moderator. """
-    
+    if isinstance(ctx.channel, discord.DMChannel):
+        if error:
+            fail(T.UTIL.errorDMModCheck)
+        else:
+            return False
     return [targetID in [role.id for role in ctx.author.roles] for targetID in MOD_ROLE_IDS]
 
 def getStringArgsFromText(text: str):

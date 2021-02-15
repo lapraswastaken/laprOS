@@ -6,8 +6,9 @@ cog = {
     "description": "This part of the bot handles the addition, removal, and editing of stories to the story archive. All commands here must be used in your server's dedicated archive channel. For a walkthrough on how to add your story, use the Retrieval Cog's `archiveguide` command."
 }
 
-errorNotInArchiveChannel = "This part of the bot can only be used in the channel that hosts story links."
+errorNotInArchiveChannel = "This part of the bot can only be used in the channel that hosts story links or a direct message channel with the bot."
 errorNoArchiveChannel = "This server does not have an archive channel set up. Ask a server moderator to use the `setarchivechannel` command."
+errorNoArchiveChannelDM = "The guild you currently have selected does not have a story archive. Make sure you've selected the right guild."
 errorNoPost = "You don't have a post in the archive channel on this server."
 
 archivePostMessageWait = "Please wait..."
@@ -17,23 +18,6 @@ archivePostEmbed = lambda formattedPost: {
     "title": "Stories",
     "description": formattedPost
 }
-
-clearProxy = Cmd(
-    "clearproxy",
-    f"Clears the issuer's proxy and allows them to use the {cogName} normally.",
-    success = lambda id: f"You are no longer proxying the user <@{id}>.",
-    noProxy = "You are not currently proxying any users."
-)
-proxyUser = Cmd(
-    "proxyuser",
-    f"Allows the issuer to edit stories by another user, specified via mention, name, or user ID. While proxying a user, any {cogName} commands used to alter a post will be carried out as if the issuer was that user. Use `{clearProxy.name}` to stop proxying a user.",
-    usage = [
-        "laprOS",
-        "785222129061986304",
-        "<@785222129061986304>"
-    ],
-    success = lambda id: f"You are now proxying the user <@{id}>."
-)
 _errorNotFound = lambda title: f"Couldn't find a story titled \"{title}\"."
 focus = Cmd(
     "focus",
@@ -42,6 +26,7 @@ focus = Cmd(
         "Null Protocol",
         "Song of the Solus"
     ],
+    errorIndex = lambda index: f"The number you entered ({index}) was more than the number of stories you have.",
     errorNotFound = _errorNotFound
 )
 getMyPost = Cmd(
@@ -52,16 +37,17 @@ getMyPost = Cmd(
 _maxLenErrorText = lambda tooLong, maxLen: lambda realLen: f"That {tooLong} is {realLen} characters long. It must be shorter than {maxLen} characters long."
 _errorLenTitle = _maxLenErrorText("story title", MAX_TITLE_LEN)
 addStory = Cmd(
-    "addstory",
+    "addstory", "createstory",
     "Adds a new story with the given title to the issuer's archive post, creating a post if none exists for them.",
     usage = [
         "Pokemon Mystery Dungeon: Null Protocol"
     ],
     errorLen = _errorLenTitle,
-    errorDup = lambda storyTitle: f"You already have a story titled \"{storyTitle}\"."
+    errorDup = lambda storyTitle: f"You already have a story titled \"{storyTitle}\".",
+    errorCooldown = lambda time: f"Another user has created a story in the last ten minutes. Adding one now would mess up the formatting for the posts. Please wait {time} more minutes to add your story."
 )
 removeStory = Cmd(
-    "removestory",
+    "removestory", "deletestory"
     """
         Removes the story with the given title from the issuer's archive post.
         **BE WARNED** - This *cannot* be undone.

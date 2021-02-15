@@ -259,8 +259,9 @@ def convertOldFromText(text: str):
     return Story(title, genres, rating, reason, chars, summary, links)
 
 class Post:
-    def __init__(self, authorID: int, messageID: Optional[int]=None, stories: Optional[list[dict]]=None, focused: Optional[int]=None):
+    def __init__(self, authorID: int, archive: Archive, messageID: Optional[int]=None, stories: Optional[list[dict]]=None, focused: Optional[int]=None):
         self.authorID = authorID
+        self.archive = archive
         self.messageID= messageID
         self.stories: list[Story] = [] if not stories else [Story(**story) for story in stories]
         self.focused = focused
@@ -284,37 +285,45 @@ class Post:
         
         return string
     
+    def delete(self):
+        self.archive.removePost(self.authorID)
+    
     def addStory(self, newStory: Story):
         if newStory.title in [story.title for story in self.stories]:
             raise DuplicateException()
         self.stories.append(newStory)
+        if self.focused == None:
+            self.focused = 0
     
-    def getStory(self, targetTitle: Optional[str]=None):
-        if not targetTitle:
-            return self.stories[self.focused]
+    def getStory(self, targetTitle: str):
         for story in self.stories:
             if story.title == targetTitle:
                 return story
         raise NotFoundException()
 
     def removeStory(self, targetTitle: str):
-        retrieved: Optional[Story] = None
-        for story in self.stories:
-            if story.title == targetTitle:
-                retrieved = story
-        if not retrieved:
-            raise NotFoundException()
+        retrieved = self.getStory(targetTitle)
         self.stories.remove(retrieved)
+        if self.stories:
+            self.focused = 0
+        else:
+            self.focused = None
     
-    def getFocusedStory(self) -> Story:
+    def getFocusedStory(self):
+        if self.focused == None: return None
         return self.stories[self.focused]
     
     def focusStory(self, story: Story):
         index = self.stories.index(story)
         self.focused = index
     
-    def focusStoryByName(self, name: str):
-        self.focusStory(self.getStory(name))
+    def focusByIndex(self, index: int):
+        if index > len(self.stories):
+            raise MaxLenException()
+        self.focused = index
+    
+    def focusByTitle(self, title: str):
+        self.focusStory(self.getStory(title))
     
     def getRandomStory(self):
         return random.choice(self.stories)
@@ -326,7 +335,7 @@ class Archive:
         self.guildID = guildID
         if posts:
             for authorID in posts:
-                self.posts[int(authorID)] = Post(**posts[authorID])
+                self.posts[int(authorID)] = Post(**posts[authorID], archive=self)
     
     def toJSON(self):
         json = {
@@ -340,10 +349,14 @@ class Archive:
     def createPost(self, authorID: int):
         if authorID in self.posts:
             raise DuplicateException()
-        self.posts[authorID] = Post(authorID)
+        self.posts[authorID] = Post(authorID, self)
         return self.posts[authorID]
     
+    def removePost(self, authorID: int):
+        self.posts.pop(authorID)
+    
     def getPost(self, authorID: int):
+        print(self.posts)
         return self.posts.get(authorID)
     
     def getPostByMessageID(self, targetMessageID):
@@ -401,18 +414,17 @@ class OverArch:
         self.archives[guildID] = Archive(channelID)
         return self.archives[guildID]
     
-    def getArchive(self, guildID):
+    def getArchiveForGuild(self, guildID):
         return self.archives.get(guildID)
     
-    def getGuildIDFromArchive(self, targetArchive: Archive):
-        for guildID, archive in self.archives.items():
-            if archive == targetArchive:
-                return guildID
-    
     def getArchiveForUser(self, userID: int):
-        if not userID in self.userArchivePrefs:
-            raise NotFoundException()
-        return self.archives[self.userArchivePrefs[userID]]
+        guildID = self.userArchivePrefs.get(userID)
+        if not guildID:
+            return None
+        return self.getArchiveForGuild(guildID)
+    
+    def getGuildIDForUser(self, userID: int):
+        return self.userArchivePrefs.get(userID)
     
     def isValidChannelID(self, channelID: int):
         return channelID in [archive.channelID for archive in self.archives.values()]

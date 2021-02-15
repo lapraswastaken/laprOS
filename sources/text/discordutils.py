@@ -24,3 +24,5 @@ emojiArrows = "↔️"
 indices = [emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7, emoji8, emoji9, emoji10]
 
 paginationIndex = lambda index, length: f"Page {index} of {length}."
+
+errorDMModCheck = "This command requires moderator priveleges, and therefore can't be used in direct messages."

@@ -35,8 +35,12 @@ class CogMod(commands.Cog, **T.MOD.cog):
         self.oldDeleteEntries = await CogMod.getNewEntries(guild)
     
     async def handleMessageDelete(self, message: discord.Message):
-        if not message.guild.id in IDS.logChannelIDs: return
-        if message.author.bot: return
+        if (
+            isinstance(message.channel, discord.DMChannel) or
+            not message.guild.id in IDS.logChannelIDs or
+            message.author.bot
+        ):
+            return
         
         newDeleteEntries = await CogMod.getNewEntries(message.guild)
         

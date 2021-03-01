@@ -72,11 +72,8 @@ class Link(Prioritied):
         return (self.siteAbbr, self.url, self.priority)
 
 class Story(Prioritied):
-    def __init__(self, title: str, genres: Optional[list[tuple]]=None, rating: Optional[str]=None, ratingReason: Optional[str]=None, characters: Optional[list[Character]]=None, summary: Optional[str]=None, links: Optional[list[Link]]=None, priority: Optional[int]=None):
+    def __init__(self, title: str=None, genres: Optional[list[tuple]]=None, rating: Optional[str]=None, ratingReason: Optional[str]=None, characters: Optional[list[Character]]=None, summary: Optional[str]=None, links: Optional[list[Link]]=None, priority: Optional[int]=None):
         super().__init__(priority)
-        if len(title) > T.ARCH.MAX_TITLE_LEN:
-            print(f"title '{title}' is too long")
-            raise MaxLenException()
         
         self.title = title
         self.genres: list[Genre] = [] if not genres else [Genre(*genre) for genre in genres]
@@ -301,6 +298,9 @@ class Post:
                 return story
         raise NotFoundException()
 
+    def getStoryTitles(self):
+        return [story.title for story in self.stories]
+
     def removeStory(self, targetTitle: str):
         retrieved = self.getStory(targetTitle)
         self.stories.remove(retrieved)
@@ -336,6 +336,7 @@ class Archive:
         if posts:
             for authorID in posts:
                 self.posts[int(authorID)] = Post(**posts[authorID], archive=self)
+        
     
     def toJSON(self):
         json = {
@@ -356,7 +357,6 @@ class Archive:
         self.posts.pop(authorID)
     
     def getPost(self, authorID: int):
-        print(self.posts)
         return self.posts.get(authorID)
     
     def getPostByMessageID(self, targetMessageID):
@@ -385,6 +385,9 @@ class OverArch:
         if userArchivePrefs:
             for userID in userArchivePrefs:
                 self.userArchivePrefs[int(userID)] = userArchivePrefs[userID]
+        
+        self.proxies: dict[int, int] = {}
+        
     @staticmethod
     def read():
         with open("./sources/archives.json", "r") as f:
@@ -428,6 +431,19 @@ class OverArch:
     
     def isValidChannelID(self, channelID: int):
         return channelID in [archive.channelID for archive in self.archives.values()]
+    
+    def setProxy(self, userID, targetUserID):
+        self.proxies[userID] = targetUserID
+    
+    def clearProxy(self, userID):
+        if not userID in self.proxies:
+            raise NotFoundException()
+        return self.proxies.pop(userID)
+    
+    def getProxy(self, userID):
+        if userID in self.proxies:
+            return self.proxies[userID]
+        return userID
 
 OVERARCH = OverArch.read()
 if not OVERARCH:

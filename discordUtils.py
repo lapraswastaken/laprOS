@@ -1,5 +1,5 @@
 
-from Archive import NotFoundException, OVERARCH
+from Archive import Archive, NotFoundException, OVERARCH
 import discord
 from discord.ext import commands
 from discord import Embed
@@ -42,36 +42,97 @@ def getLaprOSEmbed(title: str, description: str=None, fields: list[Union[tuple[s
     e.set_thumbnail(url=LAPROS_GRAPHIC_URL)
     return e
 
-async def dmError(ctx: commands.Context, errorText: str):
+async def sendError(ctx: commands.Context, errorText: str):
     """ Sends a message to the author of a command that encountered an error. """
-    if isinstance(ctx.channel, discord.DMChannel):
-        await ctx.author.send(T.UTIL.dmMessage(errorText))
+    if canHandleArchive(ctx):
+        if isinstance(ctx.channel, discord.DMChannel):
+            await ctx.author.send(T.UTIL.dmMessage(errorText))
+        else:
+            await ctx.author.send(T.UTIL.dmMessageWithChannel(ctx.message.content[:1500], ctx.channel.id, errorText))
     else:
-        await ctx.author.send(T.UTIL.dmMessageWithChannel(ctx.message.content[:1500], ctx.channel.id, errorText))
+        await ctx.send(T.UTIL.dmMessage(errorText))
     
 def fail(errorText: str):
-    """ Sends a message to the author of a command that encountered an error, then raises a commands.CheckFailure. """
+    """ Raises a laprOSException with the given message. This gets caught in main.py and the message is sent to the user. """
     raise laprOSException(errorText)
 
 async def fetchChannel(guild: discord.Guild, channelID: int):
     channels = await guild.fetch_channels()
     print(channels)
+    print(channelID)
     return discord.utils.get(channels, id=channelID)
 
-def checkIsBotID(id: int):
-    return id in BOT_USER_IDS
+def canHandleArchive(ctx: commands.Context):
+    """ Gets whether or not the given Context's channel can handle the CogArchive functionality. """
     
+    if isinstance(ctx.channel, discord.DMChannel):
+        if not OVERARCH.getGuildIDForUser(ctx.author.id):
+            fail(T.UTIL.errorNoArchivePreference)
+        return True
+    if not OVERARCH.isValidChannelID(ctx.channel.id):
+        return False
+    return True
+
 def meCheck(ctx: commands.Context):
     return ctx.author.id == MY_USER_ID
+    
+def isModerator(member: discord.Member):
+    return any([targetID in [role.id for role in member.roles] for targetID in MOD_ROLE_IDS])
 
-def moderatorCheck(ctx: commands.Context, error: bool=True):
+def moderatorCheck(ctx: commands.Context):
     """ Checks to see if the context's author is a moderator. """
     if isinstance(ctx.channel, discord.DMChannel):
-        if error:
-            fail(T.UTIL.errorDMModCheck)
-        else:
-            return False
-    return [targetID in [role.id for role in ctx.author.roles] for targetID in MOD_ROLE_IDS]
+        fail(T.UTIL.errorDMModCheck)
+    return isModerator(ctx.author)
+
+def getArchiveFromContext(ctx: commands.Context) -> Archive:
+    """ Gets the Archive from the Context. If the Context's author is proxying, the proxied user's Archive is returned instead. """
+    
+    authorID = OVERARCH.getProxy(ctx.author.id)
+    if isinstance(ctx.channel, discord.DMChannel):
+        archive = OVERARCH.getArchiveForUser(authorID)
+    else:
+        archive = OVERARCH.getArchiveForGuild(ctx.guild.id)
+        if not archive:
+            fail(T.UTIL.errorNoArchiveChannel(ctx.guild.name))
+    if not archive:
+        fail(T.UTIL.errorNoArchivePreference)
+    return archive
+
+async def getAuthorFromContext(ctx: commands.Context) -> discord.Member:
+    """ Gets the user from the Context. If the Context's author is proxying, the proxied user is returned instead. """
+    
+    authorID = OVERARCH.getProxy(ctx.author.id)
+    guild = await getGuildFromContext(ctx)
+    author = await guild.fetch_member(authorID)
+    return author
+
+async def getGuildFromContext(ctx: commands.Context) -> discord.Guild:
+    
+    authorID = OVERARCH.getProxy(ctx.author.id)
+    if isinstance(ctx.channel, discord.DMChannel):
+        guildID = OVERARCH.getGuildIDForUser(authorID)
+        if not guildID:
+            fail(T.UTIL.errorNoArchivePreference)
+        guild = await ctx.bot.fetch_guild(guildID)
+        if not guild:
+            print(f"Something bad happened with {authorID}'s preferred guild ({guildID}). Has the bot been removed from that server?")
+            fail(T.UTIL.errorNoGuildAccess)
+    else:
+        guild = ctx.guild
+    return guild
+
+async def convertMember(member: Union[discord.Member, int], ctx: Optional[commands.Context]) -> discord.Member:
+    """ Returns the member argument, usually for a command. If the member argument is an int, uses the given guild to try to fetch that member. Does not take into account proxying. """
+    
+    if isinstance(member, int):
+        guild = await getGuildFromContext(ctx) if ctx else None
+        if not guild:
+            fail(T.UTIL.errorNoGuild)
+        member = await guild.fetch_member(member)
+        if not member:
+            fail(T.UTIL.errorUserIDNotFound)
+    return member
 
 def getStringArgsFromText(text: str):
     
@@ -107,10 +168,11 @@ class Page:
         }
 
 class Paginator:
-    def __init__(self, pages: list[Page], issuerID: int, ignoreIndex: bool):
+    def __init__(self, pages: list[Page], issuerID: int, ignoreIndex: bool, isDM: bool):
         self.pages = pages
         self.issuerID = issuerID
         self.ignoreIndex = ignoreIndex
+        self.isDM = isDM
         
         self.length = len(self.pages)
         self.focused = 0
@@ -144,6 +206,9 @@ class Paginator:
     def getReactions(self):
         reactions: list[str] = []
         amBig = self.length > 3
+        
+        if self.isDM:
+            return T.UTIL.arrows
         
         if self.canUseNumbers():
             reactions = T.UTIL.indices[:self.length]
@@ -184,6 +249,11 @@ async def updatePaginatedMessage(message: discord.Message, user: discord.User, p
     paginator.refocus(emoji)
     focused = paginator.getFocused()
     await message.edit(content=focused.content, embed=focused.embed)
+    if paginator.isDM:
+        reactions = paginator.getReactions()
+        for reaction in reactions:
+            await message.add_reaction(reaction)
+        return
     if not paginator.canUseNumbers() or (not emoji) or emoji == T.UTIL.emojiNumbers:
         paginator.lock()
         await message.clear_reactions()
@@ -194,20 +264,21 @@ async def updatePaginatedMessage(message: discord.Message, user: discord.User, p
     else:
         await message.remove_reaction(emoji, user)
 
-async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, discord.Embed]]], dm: bool=False, ignoreIndex: bool=False):
+async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, discord.Embed]]], ignoreIndex: bool=False):
     pages = []
     for page in contents:
         pages.append(Page(**page))
     if not pages:
         raise IndexError("No messages were given to the pagination function")
-    if not dm:
-        paginator = Paginator(pages, ctx.author.id, ignoreIndex)
-        focused = paginator.getFocused()
-        message: discord.Message = await ctx.send(content=focused.content, embed=focused.embed)
-        toListen[message.id] = paginator
-        await updatePaginatedMessage(message, ctx.author, paginator)
+    
+    isDM = isinstance(ctx.channel, discord.DMChannel)
+    paginator = Paginator(pages, ctx.author.id, ignoreIndex, isDM)
+    focused = paginator.getFocused()
+    message: discord.Message = await ctx.send(content=focused.content, embed=focused.embed)
+    toListen[message.id] = paginator
+    await updatePaginatedMessage(message, ctx.author, paginator)
 
-async def handleReactionAdd(reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
+async def handleReaction(reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
     if not reaction.message.id in toListen:
         return
     paginator = toListen[reaction.message.id]

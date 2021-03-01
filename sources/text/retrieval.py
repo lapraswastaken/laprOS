@@ -1,6 +1,6 @@
 
 import sources.text.archive as ARCH
-from sources.general import ALL_GENRES, ALL_RATINGS, ALL_SITE_ABBREVIATIONS, BOT_PREFIX as lap, Cmd, stripLines
+from sources.general import ALL_GENRES, ALL_RATINGS, ALL_SITE_ABBREVIATIONS, BOT_PREFIX as lap, Cmd, NEWLINE, stripLines
 
 cog = {
     "name": "Retrieval Cog",
@@ -36,39 +36,38 @@ whichArchive = Cmd(
     """,
     success = lambda guild: f"In direct messages, you're currently set to use the archive in `{guild}`."
 )
-errorNoArchivePreference = f"You haven't set your archive preference yet. You can do so with the {useHere.refF()} command."
 
 clearProxy = Cmd(
     "clearproxy",
     f"Clears the issuer's proxy and allows them to use the {ARCH.cogName} normally.",
-    success = lambda user: f"You are no longer proxying the user `{user}`.",
-    noProxy = "You are not currently proxying any users."
+    success = lambda user: f"You are no longer proxying the user `{user}`."
 )
-proxyUser = Cmd(
-    "proxyuser",
+proxy = Cmd(
+    "proxy", "proxyuser",
     f"Allows the issuer to edit stories by another user, specified via mention, name, or user ID. While proxying a user, any {ARCH.cogName} commands used to alter a post will be carried out as if the issuer was that user. Use `{clearProxy.name}` to stop proxying a user.",
     usage = [
         "laprOS",
         "785222129061986304",
         "<@785222129061986304>"
     ],
+    selfProxy = f"You can't proxy yourself.",
     success = lambda user: f"You are now proxying the user `{user}`."
 )
+noProxy = "You are not currently proxying any users."
 getProxy = Cmd(
-    "getproxy", "proxyget", "proxying",
+    "getproxy", "proxyget",
     f"""
         Gets the user that the issuer is currently proxying.
     """,
-    noProxy = "You are not currently proxying any users.",
     proxy = lambda user: f"You are currently proxying `{user}`."
 )
 dmMe = Cmd(
     "dmme", "dm",
     f"""
-        Sends you a direct message.
+        Sends the issuer a direct message.
         Can be used to start adding/editing a story post in direct messages.
     """,
-    successs = f"If you intend to use the {ARCH.cogName}'s commands here, and you have not already done so, please use the {useHere.refF()} command in the server with the archive you would like to add to / edit in."
+    successs = f"If you intend to use the {ARCH.cogName}'s commands here, please make sure you are using the guild with the archive you would like to add to / edit in using the {whichArchive.refF()} command, and if not, use the {useHere.refF()} command in that guild to do so."
 )
 _listText = lambda item, joinedItems, suffix=True: f"Below is each valid {item}: ```\n{joinedItems}```" + ("" if not suffix else f"\nIf your {item} is not listed here, please let a moderator know.")
 listGenres = Cmd(
@@ -178,28 +177,35 @@ archiveGuide = Cmd(
         }
     ]
 )
-randomStory = Cmd(
-    "randomstory",
-    f"Gets a random story from the story archive.",
+fetch = Cmd(
+    "fetch", "search", "f", "s",
+    f"A parent command for various search functions.",
+    noArgs = f"This command gives various ways to search for stories in the story archive. Use `{lap}help fetch` for more information.",
+    error = lambda entry: f"`{entry}` is an invalid subcommand."
+)
+byRandom = Cmd(
+    "random", "r",
+    f"Fetches a post at random from the story archive.",
     error = "Couldn't find a story.",
     embed = lambda title, author, summary, jumpURL: {
         "title": title,
-        "description": f"by {author}\n" + (f"```{summary}```" if summary else "No description") + "\n" + jumpURL
+        "description": f"""
+            by {(author + NEWLINE) + (f"```{summary}```" if summary else "No description")}
+            
+            {jumpURL}
+        """
     }
 )
-searchByAuthor = Cmd(
-    "searchbyauthor",
-    f"Gets a link to the archive post for a given user.",
-    usage = [
-        "laprOS",
-        "785222129061986304",
-        "<@785222129061986304>"
-    ],
-    errorName = lambda name: f"Couldn't find an author with the name `{name}`.",
-    errorID = lambda id: f"Couldn't find an author with the ID `{id}`.",
-    errorPost = lambda name: f"The specified user, `{name}`, doesn't have a post in the story archive.",
-    embed = lambda name, jump: {
-        "title": f"Stories by {name}",
-        "description": f"Archive post:\n{jump}"
+byAuthor = Cmd(
+    "author", "a",
+    f"Fetches the post created by the given author from the story archive. The entry must be an exact username, a mention, or a user ID.",
+    noPost = lambda author: f"`{author}` doesn't have a post in the story archive for this server.",
+    embed = lambda author, stories, jumpURL: {
+        "title": f"Stories by {author}",
+        "description": f"""
+            > {(NEWLINE + '> ').join(stories)}
+            
+            {jumpURL}
+        """
     }
 )

@@ -5,7 +5,7 @@ from typing import Callable, Optional, Union
 import time
 
 from Archive import Story, DuplicateException, InvalidNameException, MaxLenException, MaxNameLenException, MaxSpeciesLenException, NotFoundException, OVERARCH, Post
-from discordUtils import fail, fetchChannel, getEmbed, getStringArgsFromText, laprOSException, moderatorCheck
+from discordUtils import fail, fetchChannel, getArchiveFromContext, getAuthorFromContext, getEmbed, getStringArgsFromText, canHandleArchive, isModerator, laprOSException, moderatorCheck
 import sources.text as T
 from sources.general import BOT_PREFIX
 from Story import getStoriesFromMessage
@@ -13,17 +13,6 @@ from Story import getStoriesFromMessage
 A = T.ARCH
 
 reactionLockedMessageIDs: list[int] = []
-
-def getArchiveFromContext(ctx: commands.Context, asAuthor: Optional[discord.Member]=None):
-    if isinstance(ctx.channel, discord.DMChannel):
-        archive = OVERARCH.getArchiveForUser(ctx.author.id if not asAuthor else asAuthor.id)
-        if not archive:
-            fail(A.errorNoArchiveChannelDM)
-    else:
-        archive = OVERARCH.getArchiveForGuild(ctx.guild.id)
-        if not archive:
-            fail(A.errorNoArchiveChannel)
-    return archive
 
 class CogArchive(commands.Cog, **A.cog):
     
@@ -35,31 +24,15 @@ class CogArchive(commands.Cog, **A.cog):
         self.addStoryCooldown = 0
     
     async def cog_check(self, ctx: commands.Context):
-        
-        if isinstance(ctx.channel, discord.DMChannel):
-            try:
-                OVERARCH.getGuildIDForUser(ctx.author.id)
-            except NotFoundException:
-                fail(T.RETR.errorNoArchivePreference)
-            return True
-        else:
-            if not ctx.author.id in OVERARCH.userArchivePrefs:
-                OVERARCH.setArchivePref(ctx.author.id, ctx.guild.id)
-                OVERARCH.write()
-        if not OVERARCH.isValidChannelID(ctx.channel.id):
-            await ctx.send(content=A.errorNotInArchiveChannel)
+        inCorrectChannel = canHandleArchive(ctx)
+        if not inCorrectChannel:
+            await ctx.send(content=T.UTIL.errorNotInArchiveChannel)
             return False
+        
+        if not ctx.author.id in OVERARCH.userArchivePrefs:
+            OVERARCH.setArchivePref(ctx.author.id, ctx.guild.id)
+            OVERARCH.write()
         return True
-    
-    async def checkIsUserProxied(self, author: Union[discord.User, discord.Member]) -> discord.Member:
-        if not author.id in self.proxies:
-            return author
-        if isinstance(author, discord.Member):
-            return await author.guild.fetch_member(self.proxies[author.id].id)
-        else:
-            guildID = OVERARCH.getGuildIDForUser(author.id)
-            guild = await self.bot.fetch_guild(guildID)
-            return await guild.fetch_member(self.proxies[author.id].id)
     
     @staticmethod
     async def parseCharacter(ctx: commands.Context, text: str) -> tuple[str, str]:
@@ -81,7 +54,10 @@ class CogArchive(commands.Cog, **A.cog):
         else:
             archive = OVERARCH.getArchiveForUser(payload.user_id)
         if not archive: return
-        post = archive.getPostByMessageID(payload.message_id)
+        try:
+            post = archive.getPostByMessageID(payload.message_id)
+        except NotFoundException:
+            return
         
         guild = await self.bot.fetch_guild(archive.guildID)
         
@@ -139,10 +115,8 @@ class CogArchive(commands.Cog, **A.cog):
     async def getPost(self, ctx: commands.Context):
         """ Gets the post from the context. If `error`, if a post isn't found, the context is notified and an error is thrown. """
         
-        author = await self.checkIsUserProxied(ctx.author)
-        archive = getArchiveFromContext(ctx, author)
-        if not archive:
-            fail(T.RETR.errorNoArchivePreference)
+        archive = getArchiveFromContext(ctx)
+        author = await getAuthorFromContext(ctx)
         post = archive.getPost(author.id)
         if not post:
             fail(A.errorNoPost)
@@ -230,7 +204,7 @@ class CogArchive(commands.Cog, **A.cog):
                         print(f"running command {targetCmdName}")
                         await commandFn(ctx, *args)
                         found = True
-                    except TypeError as e:
+                    except TypeError:
                         await fail(A.multi.errorArgs(targetCmdName))
                     break
             
@@ -252,14 +226,15 @@ class CogArchive(commands.Cog, **A.cog):
     async def addStory(self, ctx: commands.Context, *storyTitle: str):
         # not kwarg so it works with multi
         storyTitle = " ".join(storyTitle)
+        author = await getAuthorFromContext(ctx)
+        
         now = time.time()
-        author = await self.checkIsUserProxied(ctx.author)
         isNewPost = False
         try:
             post = await self.getPost(ctx)
         except laprOSException:
             print("Creating new post.")
-            archive = getArchiveFromContext(ctx, author)
+            archive = getArchiveFromContext(ctx)
             post = archive.createPost(author.id)
         
             last = self.addStoryCooldown
@@ -272,7 +247,8 @@ class CogArchive(commands.Cog, **A.cog):
             isNewPost = True
         
         try:
-            newStory = Story(storyTitle)
+            newStory = Story()
+            newStory.setTitle(storyTitle, ignoreMax=isModerator(author))
             post.addStory(newStory)
             post.focusByTitle(newStory.title)
         except MaxLenException:
@@ -281,7 +257,8 @@ class CogArchive(commands.Cog, **A.cog):
             fail(A.addStory.errorDup(storyTitle)); return
         await self.updatePost(ctx)
         if isinstance(ctx.channel, discord.DMChannel):
-            await self.getMyPost(ctx)
+            if not post.messageID in self.dmPosts:
+                await self.getMyPost(ctx)
         
         if isNewPost:
             self.addStoryCooldown = now
@@ -300,11 +277,13 @@ class CogArchive(commands.Cog, **A.cog):
     
     @commands.command(**A.setTitle.meta)
     async def setTitle(self, ctx: commands.Context, *newTitle: str):
+        
         newTitle = " ".join(newTitle)
+        author = await getAuthorFromContext(ctx)
             
         async def changeTitle(story: Story):
             try:
-                story.setTitle(newTitle)
+                story.setTitle(newTitle, ignoreMax=isModerator(author))
             except MaxLenException:
                 fail(A.setTitle.errorLen(len(newTitle)))
         await self.updatePost(ctx, changeTitle)
@@ -348,10 +327,11 @@ class CogArchive(commands.Cog, **A.cog):
     @commands.command(**A.setRatingReason.meta)
     async def setratingreason(self, ctx: commands.Context, *newReason: str):
         newReason = " ".join(newReason)
+        author = await getAuthorFromContext(ctx)
         
         async def changeReason(story: Story):
             try:
-                story.setRatingReason(newReason)
+                story.setRatingReason(newReason, ignoreMax=isModerator(author))
                 print(f"Set rating reason of {story.cite()} to {newReason}.")
             except MaxLenException:
                 fail(A.setRatingReason.errorLen(newReason))
@@ -359,11 +339,13 @@ class CogArchive(commands.Cog, **A.cog):
 
     @commands.command(**A.addCharacter.meta)
     async def addCharacter(self, ctx: commands.Context, *newCharacter: str):
+        
         newCharName, newCharSpecies = await CogArchive.parseCharacter(ctx, " ".join(newCharacter))
+        author = await getAuthorFromContext(ctx)
         
         async def changeCharacter(story: Story):
             try:
-                story.addCharacter(newCharSpecies, newCharName, ignoreMax=moderatorCheck(ctx, error=False))
+                story.addCharacter(newCharSpecies, newCharName, ignoreMax=isModerator(author))
                 print(f"Added character with species {newCharSpecies} and name {newCharName} to {story.cite()}.")
             except DuplicateException:
                 fail(A.addCharacter.errorDup(story.cite(), newCharSpecies, newCharName))
@@ -389,10 +371,11 @@ class CogArchive(commands.Cog, **A.cog):
     async def setSummary(self, ctx: commands.Context, *newSummary: str):
         
         newSummary = " ".join(newSummary)
+        author = await getAuthorFromContext(ctx)
         
         async def changeSummary(story: Story):
             try:
-                story.setSummary(newSummary, ignoreMax=moderatorCheck(ctx, error=False))
+                story.setSummary(newSummary, ignoreMax=isModerator(author))
                 print(f"Set summary of {story.cite()} to:\n{newSummary}")
             except MaxLenException:
                 fail(A.setSummary.errorLen(len(newSummary)))
@@ -400,11 +383,13 @@ class CogArchive(commands.Cog, **A.cog):
     
     @commands.command(**A.addLink.meta, ignore_extra=False)
     async def addlink(self, ctx: commands.Context, linkSiteAbbr: str, linkURL: str):
+        
         linkSiteAbbr = linkSiteAbbr.upper()
+        author = await getAuthorFromContext(ctx)
         
         async def changeLink(story: Story):
             try:
-                story.addLink(linkSiteAbbr, linkURL, ignoreMax=moderatorCheck(ctx, error=False))
+                story.addLink(linkSiteAbbr, linkURL, ignoreMax=isModerator(author))
             except InvalidNameException:
                 fail(A.addLink.errorInvalid(story.cite(), linkSiteAbbr))
             except DuplicateException:
@@ -454,3 +439,4 @@ class CogArchive(commands.Cog, **A.cog):
     async def refreshPost(self, ctx: commands.Context):
         async def dummy(_): pass
         await self.updatePost(ctx, dummy)
+        self.addStoryCooldown = time.time()

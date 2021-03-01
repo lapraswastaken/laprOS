@@ -62,7 +62,7 @@ class CogMod(commands.Cog, **T.MOD.cog):
             #if message.guild.id == 546872429621018635 and not 550518609714348034 in [role.id for role in deleter.roles]: return
             
             channel: discord.TextChannel = message.guild.get_channel(IDS.logChannelIDs[message.guild.id])
-            await channel.send(T.MOD.deletedMessageText(message.author.id, deleter.id))
+            await channel.send(T.MOD.deletedMessageText(message.author.id, deleter.id, message.jump_url))
             await channel.send(
                 message.content,
                 embed=message.embeds[0] if message.embeds else None,

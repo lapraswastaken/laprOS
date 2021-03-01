@@ -4,7 +4,7 @@ from Help import Help
 import datetime
 import discord
 from discord.ext import commands
-from discordUtils import dmError, handleReactionAdd, laprOSException
+from discordUtils import sendError, handleReaction, laprOSException
 import os
 from typing import Union
 
@@ -54,11 +54,16 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
     if user.bot: return
     await miscCog.handleVoteAdd(reaction, user)
-    await handleReactionAdd(reaction, user)
+    await handleReaction(reaction, user)
 
 @bot.event
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
     await miscCog.handleVoteRemove(payload.message_id, payload.emoji, payload.user_id)
+
+@bot.event
+async def on_reaction_remove(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
+    if user.bot: return
+    await handleReaction(reaction, user)
 
 @bot.event
 async def on_message_delete(message: discord.Message):
@@ -72,7 +77,11 @@ async def on_message(message: discord.Message):
         if not (message.author.id == bot.user.id and (message.content.startswith(T.ARCH.archivePostMessagePrefix) or message.content.startswith(T.ARCH.archivePostMessageWait))):
             await message.delete(delay=0.5)
     if message.author.bot: return
-    await bot.process_commands(message)
+    try:
+        await bot.process_commands(message)
+    except laprOSException as error:
+        await message.channel.send(T.UTIL.dmMessage(error.message))
+        print(f"Error: {error.message}")
 
 
 class MiniEntry:
@@ -87,39 +96,33 @@ oldDeleteEntries: dict[int, MiniEntry] = {}
 async def on_message_delete(message: discord.Message):
     await modCog.handleMessageDelete(message)
 
-async def dmIfArchive(ctx: commands.Context, message: str):
-    """ Sends a direct message to the Context's author if the command used in the Context is a command in the Archive Cog, otherwise sends the message straight to the Context's channel. """
-    
-    if ctx.command and ctx.command.cog == archiveCog:
-        await dmError(ctx, message)
-    else:
-        await ctx.send(message)
-
 @bot.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):
     if isinstance(error, commands.MissingRequiredArgument):
-        await dmIfArchive(ctx, T.MAIN.missingRequiredArgument(error.param.name))
+        await sendError(ctx, T.MAIN.missingRequiredArgument(error.param.name))
+    elif isinstance(error, commands.BadUnionArgument):
+        await sendError(ctx, T.MAIN.badUnionArgument(error.param.name))
     elif isinstance(error, commands.TooManyArguments):
-        await dmIfArchive(ctx, T.MAIN.tooManyArguments)
+        await sendError(ctx, T.MAIN.tooManyArguments)
     elif isinstance(error, commands.CommandNotFound):
-        await dmIfArchive(ctx, T.MAIN.commandNotFound)
+        await sendError(ctx, T.MAIN.commandNotFound)
     elif isinstance(error, commands.CommandOnCooldown):
-        await dmIfArchive(ctx, T.MAIN.commandOnCooldown(int(error.retry_after)))
+        await sendError(ctx, T.MAIN.commandOnCooldown(int(error.retry_after)))
         return
     elif isinstance(error, commands.InvalidEndOfQuotedStringError):
-        await dmIfArchive(ctx, T.MAIN.invalidEndOfQuotedStringError)
+        await sendError(ctx, T.MAIN.invalidEndOfQuotedStringError)
     elif isinstance(error, commands.CheckFailure):
         print(f"Error: {error}")
     elif isinstance(error, commands.CommandInvokeError):
         error: laprOSException = error.original
         if isinstance(error, laprOSException):
-            await dmIfArchive(ctx, error.message)
+            await sendError(ctx, error.message)
             print(f"Error: {error.message}")
         else:
-            await dmIfArchive(ctx, T.MAIN.unexpected)
+            await sendError(ctx, T.MAIN.unexpected)
             raise error
     else:
-        await dmIfArchive(ctx, T.MAIN.unexpected)
+        await sendError(ctx, T.MAIN.unexpected)
         if ctx.command:
             ctx.command.reset_cooldown(ctx)
         raise error

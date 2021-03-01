@@ -3,12 +3,10 @@ from sources.general import ALL_GENRES, ALL_RATINGS, ALL_SITE_ABBREVIATIONS, BOT
 cogName = "Archive Cog"
 cog = {
     "name": cogName,
-    "description": "This part of the bot handles the addition, removal, and editing of stories to the story archive. All commands here must be used in your server's dedicated archive channel. For a walkthrough on how to add your story, use the Retrieval Cog's `archiveguide` command."
+    "description": "This part of the bot handles the addition, removal, and editing of stories to the story archive. All commands here must either be used in your server's dedicated archive channel or in direct messages with the bot. For a walkthrough on how to add your story, use the Retrieval Cog's `archiveguide` command."
 }
 
 errorNotInArchiveChannel = "This part of the bot can only be used in the channel that hosts story links or a direct message channel with the bot."
-errorNoArchiveChannel = "This server does not have an archive channel set up. Ask a server moderator to use the `setarchivechannel` command."
-errorNoArchiveChannelDM = "The guild you currently have selected does not have a story archive. Make sure you've selected the right guild."
 errorNoPost = "You don't have a post in the archive channel on this server."
 
 archivePostMessageWait = "Please wait..."
@@ -47,7 +45,7 @@ addStory = Cmd(
     errorCooldown = lambda time: f"Another user has created a story in the last ten minutes. Adding one now would mess up the formatting for the posts. Please wait {time} more minutes to add your story."
 )
 removeStory = Cmd(
-    "removestory", "deletestory"
+    "removestory", "deletestory",
     """
         Removes the story with the given title from the issuer's archive post.
         **BE WARNED** - This *cannot* be undone.

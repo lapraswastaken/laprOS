@@ -3,7 +3,8 @@ from sources.general import BOT_PREFIX, MENTION_ME
 
 presence = f"{BOT_PREFIX}help"
 
-missingRequiredArgument = lambda param: f"You missed an argument that is required to use this command: {param}"
+missingRequiredArgument = lambda param: f"You missed an argument that is required to use this command: `{param}`"
+badUnionArgument = lambda paramName: f"There was an issue converting the parameter `{paramName}`."
 tooManyArguments = "You gave this command too many arguments. Make sure you're surrounding arguments that have spaces in them with quotes (space is the delimiter for arguments)."
 commandInvokeError = "Something went wrong when invoking this command. Check how many arguments you have (and remember to surround arguments containing spaces with quotes)."
 commandNotFound = "This command doesn't exist!"

@@ -22,10 +22,6 @@ useHere = Cmd(
     f"""
         Sets the story archive to use when operating the bot in DMs to the one for the guild in which the command is being issued.
     """,
-    usage = [
-        "PMD Writers' Union",
-        "546872429621018635"
-    ],
     errorDM = "This command can't be used in direct messages.",
     success = lambda guild: f"Successfully set your archive preference to the story archive in `{guild}`."
 )
@@ -199,6 +195,11 @@ byRandom = Cmd(
 byAuthor = Cmd(
     "author", "a",
     f"Fetches the post created by the given author from the story archive. The entry must be an exact username, a mention, or a user ID.",
+    usage=[
+        "lapras",
+        "@lapras",
+        "194537964657704960"
+    ],
     noPost = lambda author: f"`{author}` doesn't have a post in the story archive for this server.",
     embed = lambda author, stories, jumpURL: {
         "title": f"Stories by {author}",

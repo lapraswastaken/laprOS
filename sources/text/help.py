@@ -12,8 +12,8 @@ cogEmbed = lambda cogName, cogDescription, commandNames: {
     """
 }
 
-commandEmbed = lambda cmdName, cmdAliases, cmdArgs, cmdDesc, cogName: {
-    "title": f"`{BOT_PREFIX}{cmdName}" + (f" {' '.join(cmdArgs)}`" if cmdArgs else "`"),
+commandEmbed = lambda cmdName, cmdAliases, cmdDesc, cogName: {
+    "title": f"`{BOT_PREFIX}{cmdName}`",
     "description": f"""
         {("also `" + "`, `".join(cmdAliases) + "`") if cmdAliases else ""}
         
@@ -21,3 +21,6 @@ commandEmbed = lambda cmdName, cmdAliases, cmdArgs, cmdDesc, cogName: {
     """,
     "footer": f"This command is a part of the {cogName}."
 }
+
+cogMessage = lambda cogName: f"**Commands for `{cogName}`**"
+groupMessage = lambda groupName: f"**Commands for group `{groupName}`**"

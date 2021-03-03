@@ -19,15 +19,27 @@ class Help(commands.DefaultHelpCommand):
         await paginate(self.context, pages)
     
     async def send_cog_help(self, cog: commands.Cog):
-        commands = cog.get_commands()
-        embed = getLaprOSEmbed(**T.HELP.cogEmbed(cog.qualified_name, cog.description, [command.name for command in commands if not command.hidden]))
-        await self.context.send(embed=embed)
+        pages = []
+        command: commands.Command
+        for command in cog.get_commands():
+            pages.append({
+                "content": T.HELP.groupMessage(cog.qualified_name),
+                "embed": getLaprOSEmbed(**T.HELP.commandEmbed(command.qualified_name, command.aliases, command.help, command.cog_name))
+            })
+        await paginate(self.context, pages)
     
     async def send_group_help(self, group: commands.Group):
-        await super().send_group_help(group)
+        pages = []
+        command: commands.Command
+        for command in group.commands:
+            pages.append({
+                "content": T.HELP.groupMessage(group.name),
+                "embed": getLaprOSEmbed(**T.HELP.commandEmbed(command.qualified_name, command.aliases, command.help, command.cog_name))
+            })
+        await paginate(self.context, pages)
     
     async def send_command_help(self, command: commands.Command):
         embed = getLaprOSEmbed(
-            **T.HELP.commandEmbed(command.name, command.aliases, command.clean_params, command.help, command.cog_name)
+            **T.HELP.commandEmbed(command.qualified_name, command.aliases, command.help, command.cog_name)
         )
         await self.context.send(embed=embed)

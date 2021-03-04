@@ -19,9 +19,7 @@ setArchiveChannel = Cmd(
 )
 useHere = Cmd(
     "usehere",
-    f"""
-        Sets the story archive to use when operating the bot in DMs to the one for the guild in which the command is being issued.
-    """,
+    f"Sets the story archive to use when operating the bot in DMs to the one for the guild in which the command is being issued.",
     errorDM = "This command can't be used in direct messages.",
     success = lambda guild: f"Successfully set your archive preference to the story archive in `{guild}`."
 )
@@ -63,22 +61,22 @@ dmMe = Cmd(
         Sends the issuer a direct message.
         Can be used to start adding/editing a story post in direct messages.
     """,
-    successs = f"If you intend to use the {ARCH.cogName}'s commands here, please make sure you are using the guild with the archive you would like to add to / edit in using the {whichArchive.refF()} command, and if not, use the {useHere.refF()} command in that guild to do so."
+    successs = f"If you intend to use the {ARCH.cogName}'s commands here, please make sure you are using the guild with the archive you would like to add to / edit in using the {whichArchive.refF} command, and if not, use the {useHere.refF} command in that guild to do so."
 )
 _listText = lambda item, joinedItems, suffix=True: f"Below is each valid {item}: ```\n{joinedItems}```" + ("" if not suffix else f"\nIf your {item} is not listed here, please let a moderator know.")
 listGenres = Cmd(
     "listgenres",
-    f"Gets a list of possible story genres to be added with {ARCH.addGenre.refF()}.",
+    f"Gets a list of possible story genres to be added with {ARCH.addGenre.refF}.",
     success = _listText("genre", "\n".join(ALL_GENRES))
 )
 listSites = Cmd(
     "listsites",
-    f"Gets a list of valid site abbreviations to be used with {ARCH.addLink.refF()}.",
+    f"Gets a list of valid site abbreviations to be used with {ARCH.addLink.refF}.",
     success = _listText("site abbreviation", "\n".join([f"{name} (used for {ALL_SITE_ABBREVIATIONS[name]})" for name in ALL_SITE_ABBREVIATIONS]))
 )
 listRatings = Cmd(
     "listratings",
-    f"Gets a list of valid ratings to be set with {ARCH.setRating.refF()}.",
+    f"Gets a list of valid ratings to be set with {ARCH.setRating.refF}.",
     success = _listText("rating", ", ".join(ALL_RATINGS), False)
 )
 archiveGuide = Cmd(
@@ -90,13 +88,13 @@ archiveGuide = Cmd(
             "description": f"""
                 The main feature of this bot is its story archive. In the archive, stories are displayed in a neat uniform fashion and can be fetched using various search commands. This guide will tell you how to set up a post in your server's archive channel.
                 
-                Commands used in this guide must either be used in your server's archive channel or in direct messages with the bot. To use the commands in direct messages, you must first select the Discord server you want to add a post to via the {useHere.refF()} command.
+                Commands used in this guide must either be used in your server's archive channel or in direct messages with the bot. To use the commands in direct messages, you must first select the Discord server you want to add a post to via the {useHere.refF} command.
             """
         },
         {
             "title": "Multi and Other Information",
             "description": f"""
-                Before we begin, make sure you use the {ARCH.multi.refF()} command if you want to perform multiple commands in one go. It's possible to add all the info for a story in one fell swoop, but only if you use this command. Use `{lap}help {ARCH.multi.name}` for more information.
+                Before we begin, make sure you use the {ARCH.multi.refF} command if you want to perform multiple commands in one go. It's possible to add all the info for a story in one fell swoop, but only if you use this command. Use `{lap}help {ARCH.multi.name}` for more information.
                 
                 Also, if you run into a length limit for any of your story info and want to get around it, you may ask one of the moderators for assistance.
             """
@@ -104,84 +102,85 @@ archiveGuide = Cmd(
         {
             "title": "Adding / Removing a Story, Changing Titles",
             "description": f"""
-                Use the {ARCH.addStory.refF()} command to add a new story, and give it your story's name.
-                ```{ARCH.addStory.ref()} Null Protocol```
+                Use the {ARCH.addStory.refF} command to add a new story, and give it your story's name.
+                ```{ARCH.addStory.ref} Null Protocol```
                 
-                If you want to remove any of your stories, you may use the {ARCH.removeStory.refF()} command and give it the target story's name.
-                ```{ARCH.removeStory.ref()} Null Protocol```
+                If you want to remove any of your stories, you may use the {ARCH.removeStory.refF} command and give it the target story's name.
+                ```{ARCH.removeStory.ref} Null Protocol```
                 
-                If you want to alter a story's name, focus that story in your post and use the {ARCH.setTitle.refF()} command.
-                ```{ARCH.setTitle.ref()} Pokemon Mystery Dungeon: Null Protocol```
+                If you want to alter a story's name, focus that story in your post and use the {ARCH.setTitle.refF} command.
+                ```{ARCH.setTitle.ref} Pokemon Mystery Dungeon: Null Protocol```
             """
         },
         {
             "title": "Adding / Removing Genres",
             "description": f"""
-                Use the {ARCH.addGenre.refF()} command to give your story a genre. Valid genres can be found using the command {listGenres.refF()}. If you want to add multiple genres at a time, separate each with a space.
-                ```{ARCH.addGenre.ref()} Adventure Friendship```
+                Use the {ARCH.addGenre.refF} command to give your story a genre. Valid genres can be found using the command {listGenres.refF}. If you want to add multiple genres at a time, separate each with a space.
+                ```{ARCH.addGenre.ref} Adventure Friendship```
                 
-                If you want to remove genres from a story, focus that story in your post and use the {ARCH.removeGenre.refF()} command. You may remove multiple genres at a time by separating each with a space.
-                ```{ARCH.removeGenre.ref()} Adventure Friendship```
+                If you want to remove genres from a story, focus that story in your post and use the {ARCH.removeGenre.refF} command. You may remove multiple genres at a time by separating each with a space.
+                ```{ARCH.removeGenre.ref} Adventure Friendship```
             """
         },
         {
             "title": "Adding a Rating",
             "description": f"""
-                Use the {ARCH.setRating.refF()} command to set the rating for your story. Valid ratings can be found using the command {listRatings.refF()}.
-                ```{ARCH.setRating.ref()} T```
+                Use the {ARCH.setRating.refF} command to set the rating for your story. Valid ratings can be found using the command {listRatings.refF}.
+                ```{ARCH.setRating.ref} T```
             """
         },
         {
             "title": "Adding a Rating Reason",
             "description": f"""
-                Use the {ARCH.setRatingReason.refF()} command to add a little blurb next to your rating describing why you rated your story the way you did. Note that you can use spoilers in this blurb.
-                ```{ARCH.setRatingReason.ref()} Swearing, violence, ||character death||.```
+                Use the {ARCH.setRatingReason.refF} command to add a little blurb next to your rating describing why you rated your story the way you did. Note that you can use spoilers in this blurb.
+                ```{ARCH.setRatingReason.ref} Swearing, violence, ||character death||.```
             """
         },
         {
             "title": "Adding / Removing Characters",
             "description": f"""
-                Use the {ARCH.addCharacter.refF()} command to add characters to your story. Characters have a species and an optional name. If your character doesn't have/need a name, you can simply enter their species. If your character needs both a species and a name, give their name followed by a comma followed by their species. See the examples below.
-                ```{ARCH.addCharacter.ref()} Quil, Cyndaquil
-                {ARCH.addCharacter.ref()} Orial, Mienfoo
-                {ARCH.addCharacter.ref()} Guildmaster Kess, Archeops
-                {ARCH.addCharacter.ref()} Yveltal```
+                Use the {ARCH.addCharacter.refF} command to add characters to your story. Characters have a species and an optional name. If your character doesn't have/need a name, you can simply enter their species. If your character needs both a species and a name, give their name followed by a comma followed by their species. See the examples below.
+                ```{ARCH.addCharacter.ref} Quil, Cyndaquil
+                {ARCH.addCharacter.ref} Orial, Mienfoo
+                {ARCH.addCharacter.ref} Guildmaster Kess, Archeops
+                {ARCH.addCharacter.ref} Yveltal```
                 
-                If you wish to remove a character from your story, use the {ARCH.removeCharacter.refF()} command. If the target character has a unique species among all of your characters, you may enter their species. Otherwise you will need to give the name and the species of the target character with the above formatting.
-                ```{ARCH.removeCharacter.ref()} Quil, Cyndaquil
-                {ARCH.removeCharacter.ref()} Orial, Mienfoo
-                {ARCH.removeCharacter.ref()} Guildmaster Kess, Archeops
-                {ARCH.removeCharacter.ref()} Yveltal```
+                If you wish to remove a character from your story, use the {ARCH.removeCharacter.refF} command. If the target character has a unique species among all of your characters, you may enter their species. Otherwise you will need to give the name and the species of the target character with the above formatting.
+                ```{ARCH.removeCharacter.ref} Quil, Cyndaquil
+                {ARCH.removeCharacter.ref} Orial, Mienfoo
+                {ARCH.removeCharacter.ref} Guildmaster Kess, Archeops
+                {ARCH.removeCharacter.ref} Yveltal```
             """
         },
         {
             "title": "Adding a Summary",
             "description": f"""
-                Use the {ARCH.setSummary.refF()} command to set the summary for your story. If you want to use newlines in this summary, you will have to surround it in quotes.
-                ```{ARCH.setSummary.ref()} Forterra has been swept by the new pandemic mystery dungeons... (etc.)```
+                Use the {ARCH.setSummary.refF} command to set the summary for your story. If you want to use newlines in this summary, you will have to surround it in quotes.
+                ```{ARCH.setSummary.ref} Forterra has been swept by the new pandemic mystery dungeons... (etc.)```
             """
         },
         {
             "title": "Adding / Removing Links",
             "description": f"""
-                Use the {ARCH.addLink.refF()} command to add links to your story. This command takes the abbreviation for the site and the URL itself. The list of valid site abbreviations can be found using the {listSites.refF()} command.
-                ```{ARCH.addLink.ref()} AO3 https://archiveofourown.org/```
+                Use the {ARCH.addLink.refF} command to add links to your story. This command takes the abbreviation for the site and the URL itself. The list of valid site abbreviations can be found using the {listSites.refF} command.
+                ```{ARCH.addLink.ref} AO3 https://archiveofourown.org/```
                 
-                If you want to remove a link from your story, use the {ARCH.removeLink.refF()} command and give it the site abbreviation for the target link.
-                ```{ARCH.removeLink.ref()} AO3```
+                If you want to remove a link from your story, use the {ARCH.removeLink.refF} command and give it the site abbreviation for the target link.
+                ```{ARCH.removeLink.ref} AO3```
             """
         }
     ]
 )
 fetch = Cmd(
     "fetch", "search", "f", "s",
-    f"A parent command for various search functions.",
+    f"A parent command for various search functions. Use `{lap}help fetch` for more information.",
     noArgs = f"This command gives various ways to search for stories in the story archive. Use `{lap}help fetch` for more information.",
     error = lambda entry: f"`{entry}` is an invalid subcommand."
 )
 byRandom = Cmd(
     "random", "r",
     f"Fetches a post at random from the story archive.",
+    parent=fetch,
     error = "Couldn't find a story.",
     embed = lambda title, author, summary, jumpURL: {
         "title": title,
@@ -200,6 +199,7 @@ byAuthor = Cmd(
         "@lapras",
         "194537964657704960"
     ],
+    parent=fetch,
     noPost = lambda author: f"`{author}` doesn't have a post in the story archive for this server.",
     embed = lambda author, stories, jumpURL: {
         "title": f"Stories by {author}",

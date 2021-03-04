@@ -168,11 +168,10 @@ class Page:
         }
 
 class Paginator:
-    def __init__(self, pages: list[Page], issuerID: int, ignoreIndex: bool, isDM: bool):
+    def __init__(self, pages: list[Page], issuerID: int, ignoreIndex: bool):
         self.pages = pages
         self.issuerID = issuerID
         self.ignoreIndex = ignoreIndex
-        self.isDM = isDM
         
         self.length = len(self.pages)
         self.focused = 0
@@ -197,33 +196,19 @@ class Paginator:
     def unlock(self):
         self.locked = False
     
-    def amLarg(self):
-        return self.length > len(T.UTIL.indices)
-    
-    def canUseNumbers(self):
-        return self.numbers and not self.amLarg()
-    
-    def getReactions(self):
-        reactions: list[str] = []
-        amBig = self.length > 3
+    def getReactions(self, isDM: bool):
+        reactions = []
+        amLarg = self.length > len(T.UTIL.indices)
         
-        if self.isDM:
-            return T.UTIL.arrows
-        
-        if self.canUseNumbers():
+        if self.numbers and not amLarg:
             reactions = T.UTIL.indices[:self.length]
         else:
-            if self.focused > 0:
-                if amBig:
-                    reactions.append(T.UTIL.emojiFirst)
-                reactions.append(T.UTIL.emojiPrior)
-            if self.focused < self.length - 1:
-                reactions.append(T.UTIL.emojiNext)
-                if amBig:
-                    reactions.append(T.UTIL.emojiLast)
-        if self.amLarg():
-            return reactions
-        return reactions + ([T.UTIL.emojiNumbers] if not self.numbers else [T.UTIL.emojiArrows])
+            reactions = T.UTIL.arrows
+        
+        if not isDM and not amLarg:
+            reactions.append(T.UTIL.switches[int(self.numbers)])
+        
+        return reactions
     
     def refocus(self, emoji: str):
         if emoji == T.UTIL.emojiFirst:
@@ -237,8 +222,11 @@ class Paginator:
             
         elif emoji in T.UTIL.indices:
             self.focused = T.UTIL.indices.index(emoji)
-        elif emoji in [T.UTIL.emojiNumbers, T.UTIL.emojiArrows]:
+        elif emoji in T.UTIL.switches:
+            # yes MasN this works how you think it does
             self.numbers = not self.numbers
+        
+        return self.getFocused()
     
     def getFocused(self):
         return self.pages[self.focused]
@@ -246,23 +234,22 @@ class Paginator:
 toListen: dict[int, Paginator] = {}
         
 async def updatePaginatedMessage(message: discord.Message, user: discord.User, paginator: Paginator, emoji: Optional[str]=None):
-    paginator.refocus(emoji)
-    focused = paginator.getFocused()
-    await message.edit(content=focused.content, embed=focused.embed)
-    if paginator.isDM:
-        reactions = paginator.getReactions()
-        for reaction in reactions:
-            await message.add_reaction(reaction)
-        return
-    if not paginator.canUseNumbers() or (not emoji) or emoji == T.UTIL.emojiNumbers:
-        paginator.lock()
+    if not user.id == paginator.issuerID: return
+    oldFocused = paginator.getFocused()
+    focused = paginator.refocus(emoji)
+    if not oldFocused is focused:
+        await message.edit(content=focused.content, embed=focused.embed)
+    isDM = isinstance(message.channel, discord.DMChannel)
+    if emoji in T.UTIL.switches and not isDM:
+        newReactions = paginator.getReactions(isDM)
         await message.clear_reactions()
-        reactions = paginator.getReactions()
-        for reaction in reactions:
+        for reaction in newReactions:
             await message.add_reaction(reaction)
-        paginator.unlock()
-    else:
-        await message.remove_reaction(emoji, user)
+    elif emoji == None:
+        newReactions = paginator.getReactions(isDM)
+        for reaction in newReactions:
+            await message.add_reaction(reaction)
+        
 
 async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, discord.Embed]]], ignoreIndex: bool=False):
     pages = []
@@ -271,8 +258,7 @@ async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, di
     if not pages:
         raise IndexError("No messages were given to the pagination function")
     
-    isDM = isinstance(ctx.channel, discord.DMChannel)
-    paginator = Paginator(pages, ctx.author.id, ignoreIndex, isDM)
+    paginator = Paginator(pages, ctx.author.id, ignoreIndex)
     focused = paginator.getFocused()
     message: discord.Message = await ctx.send(content=focused.content, embed=focused.embed)
     toListen[message.id] = paginator
@@ -282,8 +268,8 @@ async def handleReaction(reaction: discord.Reaction, user: Union[discord.Member,
     if not reaction.message.id in toListen:
         return
     paginator = toListen[reaction.message.id]
-    if paginator.locked or user.id != paginator.issuerID:
-        return
     
     emoji = str(reaction.emoji)
     await updatePaginatedMessage(reaction.message, user, paginator, emoji)
+    if not isinstance(reaction.message.channel, discord.DMChannel):
+        await reaction.remove(user)

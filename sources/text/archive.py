@@ -19,10 +19,11 @@ archivePostEmbed = lambda formattedPost: {
 _errorNotFound = lambda title: f"Couldn't find a story titled \"{title}\"."
 focus = Cmd(
     "focus",
-    f"Focuses the story with the given title in the issuer's archive post.",
+    f"Focuses the story with the given title in the issuer's archive post. If ",
     usage = [
         "Null Protocol",
-        "Song of the Solus"
+        "Song of the Solus",
+        "1"
     ],
     errorIndex = lambda index: f"The number you entered ({index}) was more than the number of stories you have.",
     errorNotFound = _errorNotFound

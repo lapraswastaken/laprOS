@@ -1,4 +1,6 @@
 
+from __future__ import annotations
+from typing import Optional
 import sources.ids as IDS
 
 MAX_TITLE_LEN = 75
@@ -49,13 +51,17 @@ NEWLINE = "\n"
 stripLines = lambda text: "\n".join([line.strip() for line in text.split("\n")])
 
 class Cmd:
-    def __init__(self, *args, usage: list[str]=None, **kwargs):
+    def __init__(self, *args, usage: list[str]=None, parent: Optional[Cmd]=None, **kwargs):
         self.name: str = args[0]
         self.aliases: list[str] = args[1:-1]
         self.desc: list[str] = args[-1]
+        self.parent = parent
+        self.qualifiedName = self.name
+        if self.parent:
+            self.qualifiedName = f"{parent.qualifiedName} {self.qualifiedName}"
         
         if usage:
-            self.desc += "\n**Usage:**```\n" + "\n".join([f"{BOT_PREFIX}{self.name} {case}" for case in usage]) + "```"
+            self.desc += "\n**Usage:**```\n" + "\n".join([f"{BOT_PREFIX}{self.qualifiedName} {case}" for case in usage]) + "```"
         
         for key, val in kwargs.items():
             setattr(self, key, val)
@@ -63,13 +69,8 @@ class Cmd:
         self.desc = stripLines(self.desc)
         
         self.meta = {"name": self.name, "aliases": self.aliases, "help": self.desc}
-        
-    def ref(self):
-        """ Returns a string with the bot's prefix and the name of this command. """
-        return f"{BOT_PREFIX}{self.name}"
-    def refF(self):
-        """ Returns a string with the bot's prefix and the name of this command, formatted as a code snippet in Markdown. """
-        return f"`{BOT_PREFIX}{self.name}`"
+        self.ref = f"{BOT_PREFIX}{self.name}"
+        self.refF = f"`{self.ref}`"
 
 LAPROS_GRAPHIC_URL = "https://cdn.discordapp.com/attachments/284520081700945921/799416249738067978/laprOS_logo.png"
 

@@ -63,7 +63,7 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
 @bot.event
 async def on_reaction_remove(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
     if user.bot: return
-    await handleReaction(reaction, user)
+    #await handleReaction(reaction, user)
 
 @bot.event
 async def on_message_delete(message: discord.Message):

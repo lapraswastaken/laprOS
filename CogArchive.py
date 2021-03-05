@@ -177,7 +177,7 @@ class CogArchive(commands.Cog, **A.cog):
                 fail(A.focus.errorIndex(targetStory))
         else:
             try:
-                post.focusByTitle(targetStory)
+                post.focusByTitle(targetStory.lower())
             except NotFoundException:
                 fail(A.focus.errorNotFound(targetStory))
         await self.updatePost(ctx)

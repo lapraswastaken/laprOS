@@ -286,7 +286,7 @@ class Post:
         self.archive.removePost(self.authorID)
     
     def addStory(self, newStory: Story):
-        if newStory.title in [story.title for story in self.stories]:
+        if newStory.title.lower() in [story.title.lower() for story in self.stories]:
             raise DuplicateException()
         self.stories.append(newStory)
         if self.focused == None:
@@ -294,7 +294,7 @@ class Post:
     
     def getStory(self, targetTitle: str):
         for story in self.stories:
-            if story.title == targetTitle:
+            if story.title.lower() == targetTitle.lower():
                 return story
         raise NotFoundException()
 
@@ -370,7 +370,7 @@ class Archive:
         return random.choice(list(self.posts.values()))
     
     def getAllStories(self):
-        allStories = []
+        allStories: list[Story] = []
         for post in self.posts.values():
             allStories += post.stories
         return allStories

@@ -58,8 +58,6 @@ def fail(errorText: str):
 
 async def fetchChannel(guild: discord.Guild, channelID: int):
     channels = await guild.fetch_channels()
-    print(channels)
-    print(channelID)
     return discord.utils.get(channels, id=channelID)
 
 def canHandleArchive(ctx: commands.Context):
@@ -122,17 +120,38 @@ async def getGuildFromContext(ctx: commands.Context) -> discord.Guild:
         guild = ctx.guild
     return guild
 
-async def convertMember(member: Union[discord.Member, int], ctx: Optional[commands.Context]) -> discord.Member:
-    """ Returns the member argument, usually for a command. If the member argument is an int, uses the given guild to try to fetch that member. Does not take into account proxying. """
+async def convertMember(target: Union[discord.Member, int, str], ctx: Optional[commands.Context]) -> discord.Member:
+    """ Returns the member argument, usually for a command.
+        If the member argument is an int, uses the given guild to try to fetch that member.
+        If the member argument is a str, uses the given guild to match the start of each member's names against the str.
+        Does not take into account proxying. """
     
-    if isinstance(member, int):
-        guild = await getGuildFromContext(ctx) if ctx else None
-        if not guild:
-            fail(T.UTIL.errorNoGuild)
-        member = await guild.fetch_member(member)
-        if not member:
+    if isinstance(target, discord.Member):
+        return target
+    
+    guild = await getGuildFromContext(ctx) if ctx else fail(T.UTIL.errorNoGuild)
+    
+    if isinstance(target, int):
+        target = await guild.fetch_member(target)
+        if not target:
             fail(T.UTIL.errorUserIDNotFound)
-    return member
+    
+    if isinstance(target, str):
+        found: list[discord.Member] = []
+        guildMember: discord.Member
+        async for guildMember in guild.fetch_members():
+            if guildMember.display_name.lower().startswith(target.lower()):
+                found.append(guildMember)
+            elif guildMember.name.lower().startswith(target.lower()):
+                found.append(guildMember)
+        if len(found) == 1:
+            target = found[0]
+        elif len(found) == 0:
+            fail(T.UTIL.errorNoMatches(target))
+        else:
+            fail(T.UTIL.errorTooManyMatches(target, [foundMember.display_name for foundMember in found]))
+    
+    return target
 
 def getStringArgsFromText(text: str):
     
@@ -261,6 +280,7 @@ async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, di
     paginator = Paginator(pages, ctx.author.id, ignoreIndex)
     focused = paginator.getFocused()
     message: discord.Message = await ctx.send(content=focused.content, embed=focused.embed)
+    if len(pages) == 1: return
     toListen[message.id] = paginator
     await updatePaginatedMessage(message, ctx.author, paginator)
 

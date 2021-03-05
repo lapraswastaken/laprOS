@@ -49,6 +49,7 @@ BOT_PREFIX = "lap."
 NEWLINE = "\n"
 
 stripLines = lambda text: "\n".join([line.strip() for line in text.split("\n")])
+oxfordComma = lambda list: ', '.join(list[:-1] + [f"and {list[-1]}"]) if len(list) != 2 else f"{list[0]} and {list[1]}"
 
 class Cmd:
     def __init__(self, *args, usage: list[str]=None, parent: Optional[Cmd]=None, **kwargs):

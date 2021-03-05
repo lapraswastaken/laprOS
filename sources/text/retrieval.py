@@ -1,6 +1,6 @@
 
 import sources.text.archive as ARCH
-from sources.general import ALL_GENRES, ALL_RATINGS, ALL_SITE_ABBREVIATIONS, BOT_PREFIX as lap, Cmd, NEWLINE, stripLines
+from sources.general import ALL_GENRES, ALL_RATINGS, ALL_SITE_ABBREVIATIONS, BOT_PREFIX as lap, Cmd, MENTION_ME, NEWLINE, stripLines
 
 cog = {
     "name": "Retrieval Cog",
@@ -61,7 +61,7 @@ dmMe = Cmd(
         Sends the issuer a direct message.
         Can be used to start adding/editing a story post in direct messages.
     """,
-    successs = f"If you intend to use the {ARCH.cogName}'s commands here, please make sure you are using the guild with the archive you would like to add to / edit in using the {whichArchive.refF} command, and if not, use the {useHere.refF} command in that guild to do so."
+    success = f"If you intend to use the {ARCH.cogName}'s commands here, please make sure you are using the guild with the archive you would like to add to / edit in using the {whichArchive.refF} command, and if not, use the {useHere.refF} command in that guild to do so."
 )
 _listText = lambda item, joinedItems, suffix=True: f"Below is each valid {item}: ```\n{joinedItems}```" + ("" if not suffix else f"\nIf your {item} is not listed here, please let a moderator know.")
 listGenres = Cmd(
@@ -175,7 +175,7 @@ fetch = Cmd(
     "fetch", "search", "f", "s",
     f"A parent command for various search functions. Use `{lap}help fetch` for more information.",
     noArgs = f"This command gives various ways to search for stories in the story archive. Use `{lap}help fetch` for more information.",
-    error = lambda entry: f"`{entry}` is an invalid subcommand."
+    error = lambda entry: f"{entry} is an invalid subcommand."
 )
 byRandom = Cmd(
     "random", "r",
@@ -191,6 +191,9 @@ byRandom = Cmd(
         """
     }
 )
+
+noPost = lambda author: f"`{author}` doesn't have a post in the story archive for this server."
+deletedPost = lambda author: f"`{author}`'s post's message was removed somehow and can't be displayed. Ask {MENTION_ME} for help."
 byAuthor = Cmd(
     "author", "a",
     f"Fetches the post created by the given author from the story archive. The entry must be an exact username, a mention, or a user ID.",
@@ -200,7 +203,6 @@ byAuthor = Cmd(
         "194537964657704960"
     ],
     parent=fetch,
-    noPost = lambda author: f"`{author}` doesn't have a post in the story archive for this server.",
     embed = lambda author, stories, jumpURL: {
         "title": f"Stories by {author}",
         "description": f"""
@@ -209,4 +211,22 @@ byAuthor = Cmd(
             {jumpURL}
         """
     }
+)
+byTitle = Cmd(
+    "title", "t",
+    f"Gets all of the stories whose title contains the command's entry, organized by post.",
+    usage=[
+        "Null Protocol",
+        "Protocol"
+    ],
+    parent=fetch,
+    embed = lambda target, author, stories, jumpURL: {
+        "title": f"{author}'s results for {target}",
+        "description": f"""
+            > {(NEWLINE + '> ').join(stories)}
+            
+            {jumpURL}
+        """
+    },
+    noResults = lambda target: f"There were no results for {target}."
 )

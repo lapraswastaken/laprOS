@@ -1,5 +1,6 @@
 
 import sources.text.retrieval as RETR
+from sources.general import oxfordComma
 
 dmMessage = lambda text: f"{text}"
 dmMessageWithChannel = lambda command, channelID, text: f"{text}\n\n(error from your command ```\n{command}```in the channel <#{channelID}>)"
@@ -31,6 +32,9 @@ paginationIndex = lambda index, length: f"Page {index} of {length}."
 
 errorDMModCheck = "This command requires moderator priveleges, and therefore can't be used in direct messages."
 errorNotMod = "This command requires moderator priveleges."
+
+errorNoMatches = lambda target: f"Couldn't find a user whose name starts with `{target}`."
+errorTooManyMatches = lambda target, found: f"When trying to find a user with `{target}` in their name, multiple users {oxfordComma([f'`{foundName}`' for foundName in found])} were found instead. Narrow the name down to select one of these users."
 
 errorNotInArchiveChannel = "This part of the bot can only be used in the channel that hosts story links or a direct message channel with the bot."
 errorNoArchiveChannel = lambda guild: f"The guild that you currently have selected, `{guild}`, does not have an archive channel set up. Ask a moderator to use the {RETR.setArchiveChannel.refF} command."

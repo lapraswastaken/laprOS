@@ -2,7 +2,6 @@
 from typing import Union
 import random
 
-from discord.errors import NotFound
 from discordUtils import canHandleArchive, convertMember, fail, fetchChannel, getGuildFromContext, getLaprOSEmbed, isModerator, moderatorCheck, paginate
 import discord
 from discord.ext import commands
@@ -126,7 +125,7 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
         await ctx.send(embed=getLaprOSEmbed(**R.byRandom.embed(story.title, author.display_name, story.summary, message.jump_url)))
     
     @fetch.command(**R.byAuthor.meta, pass_context=True)
-    async def byAuthor(self, ctx: commands.Context, *, author: Union[discord.Member, int]):
+    async def byAuthor(self, ctx: commands.Context, *, author: Union[discord.Member, int, str]):
         author = await convertMember(author, ctx)
         archive = getArchiveFromContext(ctx)
         archiveChannel: discord.TextChannel = await fetchChannel(ctx.guild, archive.channelID)
@@ -134,6 +133,39 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
         post = archive.getPost(author.id)
         try:
             message: discord.Message = await archiveChannel.fetch_message(post.messageID)
-        except NotFound:
-            fail(R.byAuthor.noPost(author))
+        except AttributeError:
+            fail(R.noPost(author.display_name))
+        except discord.HTTPException:
+            fail(R.deletedPost(author.display_name))
         await ctx.send(embed=getLaprOSEmbed(**R.byAuthor.embed(author.display_name, post.getStoryTitles(), message.jump_url)))
+    
+    @fetch.command(**R.byTitle.meta, pass_context=True)
+    async def byTitle(self, ctx: commands.Context, *, storyTitle: str):
+        archive = getArchiveFromContext(ctx)
+        archiveChannel: discord.TextChannel = await fetchChannel(ctx.guild, archive.channelID)
+        
+        pages = []
+        for post in archive.posts.values():
+            foundStories: list[Story] = []
+            for story in post.stories:
+                if story.title.lower() == storyTitle.lower():
+                    foundStories.append(story)
+                    break
+                elif storyTitle.lower() in story.title.lower():
+                    foundStories.append(story)
+            
+            if foundStories:
+                author = await convertMember(post.authorID, ctx)
+                try:
+                    message: discord.Message = await archiveChannel.fetch_message(post.messageID)
+                except discord.HTTPException:
+                    fail(R.deletedPost(author.display_name))
+                pages.append({
+                    "embed": getLaprOSEmbed(**R.byTitle.embed(storyTitle, author.display_name, [story.title for story in foundStories], message.jump_url))
+                })
+        if not pages:
+            await ctx.send(R.byTitle.noResults(storyTitle))
+            return
+        await paginate(ctx, pages)
+        
+            

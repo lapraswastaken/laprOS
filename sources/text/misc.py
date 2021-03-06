@@ -44,5 +44,16 @@ stab = Cmd(
     usage=[
         "slink"
     ],
-    stab = lambda stabber, stabbee: f"{stabber} stabs {stabbee} 🔪"
+    stab = lambda stabber, stabbee: f"{stabber} stabs {stabbee} 🔪",
+    pwu = lambda stabber, stabbee: f"{stabber} stabs {stabbee} <:AngrySlink:749492163015999510>🔪"
+)
+hug = Cmd(
+    "hug",
+    "Idfk, blame Bonehead",
+    usage=[
+        "",
+        "me"
+    ],
+    hug = lambda hugger, huggee: f"{hugger} hugs {huggee} 🫂",
+    pwu = lambda hugger, huggee: f"{hugger} hugs {huggee} <:ZangooseHug:731270215870185583>",
 )

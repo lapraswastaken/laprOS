@@ -38,3 +38,11 @@ sup = Cmd(
     "Yo.",
     sup = "sup"
 )
+stab = Cmd(
+    "stab",
+    "Idfk, blame DragonD",
+    usage=[
+        "slink"
+    ],
+    stab = lambda stabber, stabbee: f"{stabber} stabs {stabbee} 🔪"
+)

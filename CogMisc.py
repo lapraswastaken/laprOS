@@ -62,4 +62,8 @@ class CogMisc(commands.Cog, **M.cog):
     
     @commands.command(**M.sup.meta, hidden=True)
     async def sup(self, ctx: commands.Context):
-        await ctx.send(M.sup.meta)
+        await ctx.send(M.sup.sup)
+    
+    @commands.command(**M.stab.meta, hidden=True)
+    async def stab(self, ctx: commands.Context, *, who: str):
+        await ctx.send(M.stab.stab(ctx.author.display_name, who))

@@ -1,12 +1,14 @@
 
-from Archive import Archive, NotFoundException, OVERARCH
+from Archive import Archive, OVERARCH
+from sources.general import LAPROS_GRAPHIC_URL, EMPTY, escapeLinks, stripLines
+from sources.ids import MOD_ROLE_IDS, MY_USER_ID
+import sources.text as T
+from typing import Optional, Union
+
+
 import discord
 from discord.ext import commands
 from discord import Embed
-from sources.general import LAPROS_GRAPHIC_URL, EMPTY, stripLines
-from sources.ids import BOT_USER_IDS, MOD_ROLE_IDS, MY_USER_ID
-import sources.text as T
-from typing import Optional, Union
 
 class laprOSException(Exception):
     def __init__(self, message: str):
@@ -55,6 +57,11 @@ async def sendError(ctx: commands.Context, errorText: str):
 def fail(errorText: str):
     """ Raises a laprOSException with the given message. This gets caught in main.py and the message is sent to the user. """
     raise laprOSException(errorText)
+
+async def sendEscaped(ctx: commands.Context, message: str):
+    message = escapeLinks(message)
+    print(message)
+    await ctx.send(discord.utils.escape_mentions(message), embed=None, file=None)
 
 async def fetchChannel(guild: discord.Guild, channelID: int):
     channels = await guild.fetch_channels()

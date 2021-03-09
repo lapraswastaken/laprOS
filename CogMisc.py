@@ -1,5 +1,5 @@
 
-from discordUtils import meCheck
+from discordUtils import meCheck, sendEscaped
 from typing import Union
 import discord
 from discord.ext import commands
@@ -67,19 +67,28 @@ class CogMisc(commands.Cog, **M.cog):
     
     @commands.command(**M.stab.meta)
     async def stab(self, ctx: commands.Context, *, who: str):
-        if ctx.guild and ctx.guild.id == IDS.PWU_GUILD_ID:
-            await ctx.send(M.stab.pwu(ctx.author.display_name, who))
+        stabber: str = ctx.author.display_name
+        if stabber == who or ctx.author.name == who:
+            await ctx.send("Why would you do that...?")
+        elif stabber.lower() == "lapros":
+            await ctx.send("It's not very effective...")
+        elif ctx.guild and ctx.guild.id == IDS.PWU_GUILD_ID:
+            await sendEscaped(ctx, f"{stabber} stabs {who} <:AngrySlink:749492163015999510>🔪")
         else:
-            await ctx.send(M.stab.stab(ctx.author.display_name, who))
+            await sendEscaped(ctx, f"{stabber} stabs {who} 🔪")
     
     @commands.command(**M.hug.meta)
     async def hug(self, ctx: commands.Context, *, who: str=None):
         hugger = ctx.author.display_name
-        if not who:
+        if not who or who == "me":
             who = ctx.author.display_name
             hugger = "laprOS"
         
         if ctx.guild and ctx.guild.id == IDS.PWU_GUILD_ID:
-            await ctx.send(M.hug.pwu(hugger, who))
+            await sendEscaped(ctx, f"{hugger} hugs {who} <:ZangooseHug:731270215870185583>")
         else:
-            await ctx.send(M.hug.hug(hugger, who))
+            await sendEscaped(ctx, f"{hugger} hugs {who} 🫂")
+    
+    @commands.command(**M.punch.meta)
+    async def punch(self, ctx: commands.Context, *, who: str):
+        pass

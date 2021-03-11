@@ -97,10 +97,10 @@ class CogMisc(commands.Cog, **M.cog):
         if not ctx.guild or not ctx.guild.id == IDS.PWU_GUILD_ID:
             await sendEscaped(ctx, f"Can't dab here. dolphinCry")
             return
-        if who.lower().startswith("on "):
-            who = who[3:]
         if not who:
             await sendEscaped(ctx, f"{dabber} dabs {IDS.EMOTE_SEAN_DAB}")
+        if who.lower().startswith("on "):
+            who = who[3:]
         elif dabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
             await sendEscaped(ctx, f"You can't do that to yourself! {IDS.EMOTE_AGONIZED_AXEW}")
         elif "lapros" in who.lower():

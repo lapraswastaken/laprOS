@@ -99,6 +99,7 @@ class CogMisc(commands.Cog, **M.cog):
             return
         if not who:
             await sendEscaped(ctx, f"{dabber} dabs {IDS.EMOTE_SEAN_DAB}")
+            return
         if who.lower().startswith("on "):
             who = who[3:]
         elif dabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():

@@ -38,7 +38,6 @@ sup = Cmd(
     "Yo.",
     sup = "sup"
 )
-_do = lambda er, s, ee, m: f"{er} {s} {ee} {m}"
 stab = Cmd(
     "stab",
     "Idfk, blame DragonD",
@@ -59,5 +58,13 @@ punch = Cmd(
     "Idfk, blame Sudmensch",
     usage=[
         "robbie"
+    ]
+)
+dab = Cmd(
+    "dab",
+    "Idfk, blame Domingize",
+    usage=[
+        "",
+        "on laprOS"
     ]
 )

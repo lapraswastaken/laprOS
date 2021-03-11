@@ -70,7 +70,7 @@ class CogMisc(commands.Cog, **M.cog):
         stabber: str = ctx.author.display_name
         if stabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
             await ctx.send("Why would you do that...?")
-        elif stabber.lower() == "lapros":
+        elif "lapros" in who.lower():
             await ctx.send("It's not very effective...")
         elif "bonehead" in who.lower():
             await ctx.send("That's not going to work. You'd need a wooden stake.")
@@ -90,7 +90,22 @@ class CogMisc(commands.Cog, **M.cog):
             await sendEscaped(ctx, f"{hugger} hugs {who} <:ZangooseHug:731270215870185583>")
         else:
             await sendEscaped(ctx, f"{hugger} hugs {who} 🫂")
-    
-    @commands.command(**M.punch.meta)
-    async def punch(self, ctx: commands.Context, *, who: str):
-        pass
+
+    @commands.command(**M.dab.meta)
+    async def dab(self, ctx: commands.Context, *, who: str):
+        dabber: str = ctx.author.display_name
+        if not ctx.guild or not ctx.guild.id == IDS.PWU_GUILD_ID:
+            await sendEscaped(ctx, f"Can't dab here. dolphinCry")
+            return
+        if who.lower().startswith("on "):
+            who = who[3:]
+        if not who:
+            await sendEscaped(ctx, f"{dabber} dabs {IDS.EMOTE_SEAN_DAB}")
+        elif dabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
+            await sendEscaped(ctx, f"You can't do that to yourself! {IDS.EMOTE_AGONIZED_AXEW}")
+        elif "lapros" in who.lower():
+            await sendEscaped(ctx, f"It's not very effective...")
+        elif "hermit" in who.lower():
+            await sendEscaped(ctx, f"{dabber} dabs on Hermit https://cdn.discordapp.com/attachments/284520081700945921/819711986166136832/Hermitisgoingtokillme.png")
+        else:
+            await sendEscaped(ctx, f"{dabber} dabs on {who} {IDS.EMOTE_SEAN_DAB}")

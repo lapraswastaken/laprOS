@@ -248,7 +248,7 @@ class CogArchive(commands.Cog, **A.cog):
         
         try:
             newStory = Story()
-            newStory.setTitle(storyTitle, ignoreMax=isModerator(author))
+            newStory.setTitle(storyTitle, ignoreMax=isModerator(ctx.author))
             post.addStory(newStory)
             post.focusByTitle(newStory.title)
         except MaxLenException:
@@ -283,7 +283,7 @@ class CogArchive(commands.Cog, **A.cog):
             
         async def changeTitle(story: Story):
             try:
-                story.setTitle(newTitle, ignoreMax=isModerator(author))
+                story.setTitle(newTitle, ignoreMax=isModerator(ctx.author))
             except MaxLenException:
                 fail(A.setTitle.errorLen(len(newTitle)))
         await self.updatePost(ctx, changeTitle)
@@ -331,7 +331,7 @@ class CogArchive(commands.Cog, **A.cog):
         
         async def changeReason(story: Story):
             try:
-                story.setRatingReason(newReason, ignoreMax=isModerator(author))
+                story.setRatingReason(newReason, ignoreMax=isModerator(ctx.author))
                 print(f"Set rating reason of {story.cite()} to {newReason}.")
             except MaxLenException:
                 fail(A.setRatingReason.errorLen(newReason))
@@ -345,7 +345,7 @@ class CogArchive(commands.Cog, **A.cog):
         
         async def changeCharacter(story: Story):
             try:
-                story.addCharacter(newCharSpecies, newCharName, ignoreMax=isModerator(author))
+                story.addCharacter(newCharSpecies, newCharName, ignoreMax=isModerator(ctx.author))
                 print(f"Added character with species {newCharSpecies} and name {newCharName} to {story.cite()}.")
             except DuplicateException:
                 fail(A.addCharacter.errorDup(story.cite(), newCharSpecies, newCharName))
@@ -375,7 +375,7 @@ class CogArchive(commands.Cog, **A.cog):
         
         async def changeSummary(story: Story):
             try:
-                story.setSummary(newSummary, ignoreMax=isModerator(author))
+                story.setSummary(newSummary, ignoreMax=isModerator(ctx.author))
                 print(f"Set summary of {story.cite()} to:\n{newSummary}")
             except MaxLenException:
                 fail(A.setSummary.errorLen(len(newSummary)))
@@ -389,7 +389,7 @@ class CogArchive(commands.Cog, **A.cog):
         
         async def changeLink(story: Story):
             try:
-                story.addLink(linkSiteAbbr, linkURL, ignoreMax=isModerator(author))
+                story.addLink(linkSiteAbbr, linkURL, ignoreMax=isModerator(ctx.author))
             except InvalidNameException:
                 fail(A.addLink.errorInvalid(story.cite(), linkSiteAbbr))
             except DuplicateException:

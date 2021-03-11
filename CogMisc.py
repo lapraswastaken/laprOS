@@ -68,10 +68,12 @@ class CogMisc(commands.Cog, **M.cog):
     @commands.command(**M.stab.meta)
     async def stab(self, ctx: commands.Context, *, who: str):
         stabber: str = ctx.author.display_name
-        if stabber == who or ctx.author.name == who:
+        if stabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
             await ctx.send("Why would you do that...?")
         elif stabber.lower() == "lapros":
             await ctx.send("It's not very effective...")
+        elif "bonehead" in who.lower():
+            await ctx.send("That's not going to work. You'd need a wooden stake.")
         elif ctx.guild and ctx.guild.id == IDS.PWU_GUILD_ID:
             await sendEscaped(ctx, f"{stabber} stabs {who} <:AngrySlink:749492163015999510>🔪")
         else:
@@ -80,7 +82,7 @@ class CogMisc(commands.Cog, **M.cog):
     @commands.command(**M.hug.meta)
     async def hug(self, ctx: commands.Context, *, who: str=None):
         hugger = ctx.author.display_name
-        if not who or who == "me":
+        if not who or who.lower() == "me":
             who = ctx.author.display_name
             hugger = "laprOS"
         

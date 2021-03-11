@@ -81,7 +81,9 @@ def canHandleArchive(ctx: commands.Context):
 def meCheck(ctx: commands.Context):
     return ctx.author.id == MY_USER_ID
     
-def isModerator(member: discord.Member):
+def isModerator(member: Union[discord.Member]):
+    if not isinstance(member, discord.Member):
+        return False
     return any([targetID in [role.id for role in member.roles] for targetID in MOD_ROLE_IDS])
 
 def moderatorCheck(ctx: commands.Context):

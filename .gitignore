@@ -1,3 +1,7 @@
 *.pyc
 archives.json
 .gitignore
+Lib/*
+Scripts/*
+Include/*
+pyvenv.cfg

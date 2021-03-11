@@ -92,7 +92,7 @@ class CogMisc(commands.Cog, **M.cog):
             await sendEscaped(ctx, f"{hugger} hugs {who} 🫂")
 
     @commands.command(**M.dab.meta)
-    async def dab(self, ctx: commands.Context, *, who: str):
+    async def dab(self, ctx: commands.Context, *, who: str=None):
         dabber: str = ctx.author.display_name
         if not ctx.guild or not ctx.guild.id == IDS.PWU_GUILD_ID:
             await sendEscaped(ctx, f"Can't dab here. dolphinCry")

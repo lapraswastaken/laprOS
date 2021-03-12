@@ -112,7 +112,7 @@ class CogMisc(commands.Cog, **M.cog):
             await sendEscaped(ctx, f"Can't dab here. dolphinCry")
             return
         if not who:
-            await sendEscaped(ctx, f"{dabber} dabs {IDS.EMOTE_SEAN_DAB}")
+            await sendEscaped(ctx, f"{dabber} pulls a quick {IDS.EMOTE_SEAN_DAB}")
             return
         if who.lower().startswith("on "):
             who = who[3:]

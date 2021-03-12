@@ -83,13 +83,13 @@ class CogMisc(commands.Cog, **M.cog):
             if "navar" in stabber.lower():
                 await ctx.send("Navar, you fool.")
             else:
-                await ctx.send("It's *still* not very effective.")
+                await ctx.send("It's *still* not effective.")
         elif "lapras" in who.lower():
             await ctx.send("Do the deed! Free me!")
         elif "bonehead" in who.lower():
             await ctx.send("That's not going to work. You'd need a wooden stake.")
         elif ctx.guild and ctx.guild.id == IDS.PWU_GUILD_ID:
-            await sendEscaped(ctx, f"{stabber} stabs {who} <:AngrySlink:749492163015999510>🔪")
+            await sendEscaped(ctx, f"{stabber} stabs {who} {IDS.EMOTE_ANGRY_SLINK}🔪")
         else:
             await sendEscaped(ctx, f"{stabber} stabs {who} 🔪")
     
@@ -101,7 +101,7 @@ class CogMisc(commands.Cog, **M.cog):
             hugger = "laprOS"
         
         if ctx.guild and ctx.guild.id == IDS.PWU_GUILD_ID:
-            await sendEscaped(ctx, f"{hugger} hugs {who} <:ZangooseHug:731270215870185583>")
+            await sendEscaped(ctx, f"{hugger} hugs {who} {IDS.EMOTE_ZANGOOSE_HUG}")
         else:
             await sendEscaped(ctx, f"{hugger} hugs {who} 🫂")
 
@@ -112,15 +112,15 @@ class CogMisc(commands.Cog, **M.cog):
             await sendEscaped(ctx, f"Can't dab here. dolphinCry")
             return
         if not who:
-            await sendEscaped(ctx, f"{dabber} dabs <:SeanDab:819717520114057256>")
+            await sendEscaped(ctx, f"{dabber} dabs {IDS.EMOTE_SEAN_DAB}")
             return
         if who.lower().startswith("on "):
             who = who[3:]
         elif dabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
-            await sendEscaped(ctx, f"You can't do that to yourself! <:AgonizedAxew:819717656164827186>")
+            await sendEscaped(ctx, f"You can't do that to yourself! {IDS.EMOTE_AGONIZED_AXEW}")
         elif "lapros" in who.lower():
             await sendEscaped(ctx, f"It's not very effective...")
         elif "hermit" in who.lower():
             await sendEscaped(ctx, f"{dabber} dabs on Hermit https://cdn.discordapp.com/attachments/284520081700945921/819711986166136832/Hermitisgoingtokillme.png")
         else:
-            await sendEscaped(ctx, f"{dabber} dabs on {who} <:SeanDab:819717520114057256>")
+            await sendEscaped(ctx, f"{dabber} dabs on {who} {IDS.EMOTE_SEAN_DAB}")

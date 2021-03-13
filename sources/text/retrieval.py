@@ -220,6 +220,7 @@ collectionEmbed = lambda target, author, stories, jumpURL: {
         {jumpURL}
     """
 }
+collectionTitle = lambda cmd, arg: f"`{cmd.qualifiedName} {arg}`"
 byTitle = Cmd(
     "title", "t",
     f"Gets all of the stories whose title contains the command's entry. Organizes by post.",
@@ -231,7 +232,7 @@ byTitle = Cmd(
     noResults = lambda target: f"There were no results for stories with the title `{target}`."
 )
 bySpecies = Cmd(
-    "species", "s",
+    "species", "s", "character", "c", "char",
     f"Gets all of the stories that feature a character of the entered species. Organizes by post.",
     usage=[
         "porygon",

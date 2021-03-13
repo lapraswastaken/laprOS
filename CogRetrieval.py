@@ -140,7 +140,7 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
         await ctx.send(embed=getLaprOSEmbed(**R.byAuthor.embed(author.display_name, post.getStoryTitles(), message.jump_url)))
     
     @staticmethod
-    async def collectStories(ctx: commands.Context, matcher: Callable[[Story], bool], failText: str):
+    async def collectStories(ctx: commands.Context, matcher: Callable[[Story], bool], headerText: str, failText: str):
         archive = getArchiveFromContext(ctx)
         archiveChannel: discord.TextChannel = await fetchChannel(ctx.guild, archive.channelID)
         
@@ -158,7 +158,7 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
                 except discord.HTTPException:
                     fail(R.deletedPost(author.display_name))
                 pages.append({
-                    "embed": getLaprOSEmbed(**R.collectionEmbed(story.title, author.display_name, [story.title for story in foundStories], message.jump_url))
+                    "embed": getLaprOSEmbed(**R.collectionEmbed(headerText, author.display_name, [story.title for story in foundStories], message.jump_url))
                 })
         if not pages:
             await ctx.send(failText)
@@ -176,7 +176,7 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
                 return True
             return False
         
-        await CogRetrieval.collectStories(ctx, match, R.byTitle.noResults(title))
+        await CogRetrieval.collectStories(ctx, match, R.collectionTitle(R.byTitle, title), R.byTitle.noResults(title))
         
     @fetch.command(**R.bySpecies.meta, pass_context=True)
     async def bySpecies(self, ctx: commands.Context, *, species: str):
@@ -184,7 +184,7 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
         def match(story: Story):
             return story.hasCharacter(species)
         
-        await CogRetrieval.collectStories(ctx, match, R.bySpecies.noResults(species))
+        await CogRetrieval.collectStories(ctx, match, R.collectionTitle(R.bySpecies, species), R.bySpecies.noResults(species))
     
     @fetch.command(**R.byGenre.meta, pass_context=True)
     async def byGenre(self, ctx: commands.Context, *, genre: str):
@@ -192,4 +192,4 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
         def match(story: Story):
             return story.getGenre(genre)
         
-        await CogRetrieval.collectStories(ctx, match, R.byGenre.noResults(genre))
+        await CogRetrieval.collectStories(ctx, match, R.collectionTitle(R.byGenre, genre), R.byGenre.noResults(genre))

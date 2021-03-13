@@ -101,9 +101,14 @@ class CogMisc(commands.Cog, **M.cog):
             hugger = "laprOS"
         
         if ctx.guild and ctx.guild.id == IDS.PWU_GUILD_ID:
-            await sendEscaped(ctx, f"{hugger} hugs {who} {IDS.EMOTE_ZANGOOSE_HUG}")
+            emote = IDS.EMOTE_ZANGOOSE_HUG
         else:
-            await sendEscaped(ctx, f"{hugger} hugs {who} 🫂")
+            emote = "🫂"
+        
+        if "lucario" in hugger.lower or "lucario" in who.lower():
+            await sendEscaped(ctx, f"{hugger} bleeds out thanks to a puncture wound in the chest {emote}")
+        else:
+            await sendEscaped(ctx, f"{hugger} hugs {who} {emote}")
 
     @commands.command(**M.dab.meta)
     async def dab(self, ctx: commands.Context, *, who: str=None):

@@ -1,5 +1,5 @@
 
-from typing import Union
+from typing import Callable, Union
 import random
 
 from discordUtils import canHandleArchive, convertMember, fail, fetchChannel, getGuildFromContext, getLaprOSEmbed, isModerator, moderatorCheck, paginate
@@ -139,8 +139,8 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
             fail(R.deletedPost(author.display_name))
         await ctx.send(embed=getLaprOSEmbed(**R.byAuthor.embed(author.display_name, post.getStoryTitles(), message.jump_url)))
     
-    @fetch.command(**R.byTitle.meta, pass_context=True)
-    async def byTitle(self, ctx: commands.Context, *, storyTitle: str):
+    @staticmethod
+    async def collectStories(ctx: commands.Context, matcher: Callable[[Story], bool], failText: str):
         archive = getArchiveFromContext(ctx)
         archiveChannel: discord.TextChannel = await fetchChannel(ctx.guild, archive.channelID)
         
@@ -148,10 +148,7 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
         for post in archive.posts.values():
             foundStories: list[Story] = []
             for story in post.stories:
-                if story.title.lower() == storyTitle.lower():
-                    foundStories.append(story)
-                    break
-                elif storyTitle.lower() in story.title.lower():
+                if matcher(story):
                     foundStories.append(story)
             
             if foundStories:
@@ -161,11 +158,38 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
                 except discord.HTTPException:
                     fail(R.deletedPost(author.display_name))
                 pages.append({
-                    "embed": getLaprOSEmbed(**R.byTitle.embed(storyTitle, author.display_name, [story.title for story in foundStories], message.jump_url))
+                    "embed": getLaprOSEmbed(**R.collectionEmbed(story.title, author.display_name, [story.title for story in foundStories], message.jump_url))
                 })
         if not pages:
-            await ctx.send(R.byTitle.noResults(storyTitle))
-            return
-        await paginate(ctx, pages)
+            await ctx.send(failText)
+        else:
+            await paginate(ctx, pages)
+
+    
+    @fetch.command(**R.byTitle.meta, pass_context=True)
+    async def byTitle(self, ctx: commands.Context, *, title: str):
+
+        def match(story: Story):
+            if story.title.lower() == title.lower():
+                return True
+            elif title.lower() in story.title.lower():
+                return True
+            return False
         
-            
+        await CogRetrieval.collectStories(ctx, match, R.byTitle.noResults(title))
+        
+    @fetch.command(**R.bySpecies.meta, pass_context=True)
+    async def bySpecies(self, ctx: commands.Context, *, species: str):
+        
+        def match(story: Story):
+            return story.hasCharacter(species)
+        
+        await CogRetrieval.collectStories(ctx, match, R.bySpecies.noResults(species))
+    
+    @fetch.command(**R.byGenre.meta, pass_context=True)
+    async def byGenre(self, ctx: commands.Context, *, genre: str):
+
+        def match(story: Story):
+            return story.getGenre(genre)
+        
+        await CogRetrieval.collectStories(ctx, match, R.byGenre.noResults(genre))

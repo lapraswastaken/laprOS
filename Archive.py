@@ -145,13 +145,16 @@ class Story(Prioritied):
         self.genres.append(Genre(newName, newPriority))
     
     def removeGenre(self, targetName: str):
-        fetched: Optional[Genre] = None
-        for genre in self.genres:
-            if genre.name == targetName:
-                fetched = genre
-        if not fetched:
+        genre = self.getGenre(targetName)
+        if not genre:
             raise NotFoundException()
-        self.genres.remove(fetched)
+        self.genres.remove(genre)
+    
+    def getGenre(self, name: str) -> Optional[Genre]:
+        for genre in self.genres:
+            if genre.name.lower() == name.lower():
+                return genre
+        return None
     
     def setRating(self, newRating: str):
         if not isValidRating(newRating):
@@ -188,6 +191,13 @@ class Story(Prioritied):
         if not fetched:
             raise NotFoundException()
         self.characters.remove(fetched)
+    
+    def hasCharacter(self, species: str):
+        for character in self.characters:
+            if character.species.lower() == species.lower():
+                return True
+            
+            return False
     
     def setSummary(self, newSummary: str, ignoreMax: bool=False):
         if len(newSummary) > T.ARCH.MAX_SUMMARY_LEN and not ignoreMax:

@@ -212,21 +212,41 @@ byAuthor = Cmd(
         """
     }
 )
+collectionEmbed = lambda target, author, stories, jumpURL: {
+    "title": f"{author}'s results for {target}",
+    "description": f"""
+        > {(NEWLINE + '> ').join(stories)}
+        
+        {jumpURL}
+    """
+}
 byTitle = Cmd(
     "title", "t",
-    f"Gets all of the stories whose title contains the command's entry, organized by post.",
+    f"Gets all of the stories whose title contains the command's entry. Organizes by post.",
     usage=[
         "Null Protocol",
         "Protocol"
     ],
     parent=fetch,
-    embed = lambda target, author, stories, jumpURL: {
-        "title": f"{author}'s results for {target}",
-        "description": f"""
-            > {(NEWLINE + '> ').join(stories)}
-            
-            {jumpURL}
-        """
-    },
-    noResults = lambda target: f"There were no results for {target}."
+    noResults = lambda target: f"There were no results for stories with the title `{target}`."
+)
+bySpecies = Cmd(
+    "species", "s",
+    f"Gets all of the stories that feature a character of the entered species. Organizes by post.",
+    usage=[
+        "porygon",
+        "Porygon Z"
+    ],
+    parent=fetch,
+    noResults = lambda target: f"There were no results for stories with a `{target}` character."
+)
+byGenre = Cmd(
+    "genre", "g",
+    f"Gets all of the stories that are marked with the entered genre. Organizes by post.",
+    usage=[
+        "adventure",
+        "Friendship"
+    ],
+    parent=fetch,
+    noResults = lambda target: f"There were no results for stories with the `{target}` genre."
 )

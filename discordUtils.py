@@ -5,10 +5,10 @@ from sources.ids import MOD_ROLE_IDS, MY_USER_ID
 import sources.text as T
 from typing import Optional, Union
 
-
 import discord
 from discord.ext import commands
-from discord import Embed
+import emoji
+import re
 
 class laprOSException(Exception):
     def __init__(self, message: str):
@@ -21,7 +21,7 @@ def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, st
     if not description: description = ""
     if not fields: fields = []
     
-    e = Embed(
+    e = discord.Embed(
         title=title,
         description=stripLines(description),
         color=0x00C0FF,
@@ -62,6 +62,16 @@ async def sendEscaped(ctx: commands.Context, message: str):
     message = escapeLinks(message)
     print(message)
     await ctx.send(discord.utils.escape_mentions(message), embed=None, file=None)
+
+emojiPat = re.compile(r"(<:\w+:\d+>)")
+def getEmojisFromText(text: str):
+    emojis: list[str] = []
+    for char in text:
+        if char in emoji.UNICODE_EMOJI_ENGLISH:
+            emojis.append(char)
+    for match in emojiPat.findall(text):
+        emojis.append(match)
+    return emojis
 
 async def fetchChannel(guild: discord.Guild, channelID: int):
     channels = await guild.fetch_channels()

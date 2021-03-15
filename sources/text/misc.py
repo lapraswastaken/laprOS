@@ -25,7 +25,8 @@ cat = Cmd(
 )
 vote = Cmd(
     "vote",
-    "Starts a vote on this command's message."
+    "Starts a vote on this command's message.",
+    emojiNotFound = f"Couldn't find one of the emojis you're trying to use for the vote. Are you sure it's available on this server?"
 )
 coinflip = Cmd(
     "coinflip", "flipcoin",

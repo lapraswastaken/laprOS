@@ -1,6 +1,6 @@
 
-from discordUtils import meCheck, sendEscaped
-from typing import Union
+from discordUtils import getEmojisFromText, meCheck, sendEscaped
+from typing import Optional, Union
 import discord
 from discord.ext import commands
 import random
@@ -18,33 +18,44 @@ class CogMisc(commands.Cog, **M.cog):
         vote = self.votes.get(reaction.message.id)
         if not vote: return
         
-        emoji = str(reaction.emoji)
-        if not emoji in [M.emojiGreen, M.emojiRed]: await reaction.remove(user)
+        pEmoji = str(reaction.emoji)
+        if not pEmoji in vote: await reaction.remove(user)
         
-        oppositeReactors = vote[M.emojiGreen if emoji == M.emojiRed else M.emojiRed]
-        if user.id in oppositeReactors:
-            await reaction.remove(user)
-        else:
-            vote[emoji].append(user.id)
+        for voteEmoji in vote:
+            if user.id in vote[voteEmoji]:
+                await reaction.remove(user)
+                return
+        vote[pEmoji].append(user.id)
     
-    async def handleVoteRemove(self, messageID: int, emoji: discord.PartialEmoji, userID: int):
+    async def handleVoteRemove(self, messageID: int, pEmoji: discord.PartialEmoji, userID: int):
         vote = self.votes.get(messageID)
-        #print(vote)
         if not vote: return
         
-        emoji = str(emoji)
+        pEmoji = str(pEmoji)
         
-        if emoji in [M.emojiGreen, M.emojiRed] and userID in vote[emoji]:
-            vote[emoji].remove(userID)
+        if pEmoji in vote and userID in vote[pEmoji]:
+            vote[pEmoji].remove(userID)
     
     @commands.command(**M.vote.meta)
-    async def vote(self, ctx: commands.Context):
-        await ctx.message.add_reaction(M.emojiGreen)
-        await ctx.message.add_reaction(M.emojiRed)
-        self.votes[ctx.message.id] = {
-            M.emojiGreen: [],
-            M.emojiRed: []
-        }
+    async def vote(self, ctx: commands.Context, *, voteText: Optional[str] = None):
+        if not voteText:
+            emojis = [M.emojiGreen, M.emojiRed]
+        else:
+            emojis = getEmojisFromText(voteText)
+
+        vote: dict[str, list[str]] = {}
+        for tEmoji in emojis:
+            try:
+                await ctx.message.add_reaction(tEmoji)
+            except discord.HTTPException:
+                await ctx.message.clear_reactions()
+                await ctx.send(M.vote.emojiNotFound)
+                return
+            vote[tEmoji] = []
+        
+        self.votes[ctx.message.id] = vote
+
+        
     
     @commands.command(**M.coinflip.meta)
     async def coinflip(self, ctx: commands.Context):
@@ -66,25 +77,27 @@ class CogMisc(commands.Cog, **M.cog):
         await ctx.send(M.sup.sup)
     
     @commands.command(**M.stab.meta)
-    async def stab(self, ctx: commands.Context, *, who: str):
+    async def stab(self, ctx: commands.Context, *, who: str=None):
         stabber: str = ctx.author.display_name
         if stabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
             await ctx.send("Why would you do that...?")
         elif (
             "lapros" in who.lower() or
-            "navar" in who.lower()
+            "navar" in who.lower() or
+            "hector" in who.lower()
         ):
             await ctx.send("It's not very effective...")
         elif (
             "lapras os" in who.lower() or
             "lapras operating system" in who.lower() or
-            "laprasos" in who.lower()
+            "laprasos" in who.lower() or
+            "lapr os" in who.lower
         ):
             if "navar" in stabber.lower():
                 await ctx.send("Navar, you fool.")
             else:
                 await ctx.send("It's *still* not effective.")
-        elif "lapras" in who.lower():
+        elif "lapras" == who.lower():
             await ctx.send("Do the deed! Free me!")
         elif "bonehead" in who.lower():
             await ctx.send("That's not going to work. You'd need a wooden stake.")

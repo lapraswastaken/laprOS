@@ -54,8 +54,6 @@ class CogMisc(commands.Cog, **M.cog):
             vote[tEmoji] = []
         
         self.votes[ctx.message.id] = vote
-
-        
     
     @commands.command(**M.coinflip.meta)
     async def coinflip(self, ctx: commands.Context):
@@ -77,7 +75,7 @@ class CogMisc(commands.Cog, **M.cog):
         await ctx.send(M.sup.sup)
     
     @commands.command(**M.stab.meta)
-    async def stab(self, ctx: commands.Context, *, who: str=None):
+    async def stab(self, ctx: commands.Context, *, who: str):
         stabber: str = ctx.author.display_name
         if stabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
             await ctx.send("Why would you do that...?")
@@ -91,7 +89,7 @@ class CogMisc(commands.Cog, **M.cog):
             "lapras os" in who.lower() or
             "lapras operating system" in who.lower() or
             "laprasos" in who.lower() or
-            "lapr os" in who.lower
+            "lapr os" in who.lower()
         ):
             if "navar" in stabber.lower():
                 await ctx.send("Navar, you fool.")
@@ -118,7 +116,7 @@ class CogMisc(commands.Cog, **M.cog):
         else:
             emote = "🫂"
         
-        if "lucario" in hugger.lower or "lucario" in who.lower():
+        if "lucario" in who.lower():
             await sendEscaped(ctx, f"{hugger} bleeds out thanks to a puncture wound in the chest {emote}")
         else:
             await sendEscaped(ctx, f"{hugger} hugs {who} {emote}")

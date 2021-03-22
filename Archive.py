@@ -119,12 +119,10 @@ class Story(Prioritied):
         linksStr = "\n".join([f"- {link.siteAbbr}: <{link.url}>" for link in sorted(self.links, key=Prioritied.key)])
         
         string = "" + \
-            f"**Title**: {self.title}\n" + \
-            f"**Genres**: {genresStr}\n" + \
-            f"**Rating**: {ratingStr}\n" + \
-            f"**Main Characters**: {charsStr}\n" + \
-            f"**Summary**:\n{summaryStr}\n" + \
-            f"**Links**:\n{linksStr}"
+            f"**{self.title}** [{ratingStr}]\n" + \
+            f"Main Characters: {charsStr}\n" + \
+            f"{summaryStr}\n" + \
+            f"{linksStr}"
         return string
     
     def cite(self):

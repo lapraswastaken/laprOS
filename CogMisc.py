@@ -173,7 +173,6 @@ class CogMisc(commands.Cog, **M.cog):
             guild = ctx.guild
         else:
             guild = await self.bot.fetch_guild(guildID)
-
         
         role: discord.Role
         string = ""
@@ -184,23 +183,23 @@ class CogMisc(commands.Cog, **M.cog):
     
     @tasks.loop(seconds=60 * 10)
     async def changeColors(self):
-        
-        if not isAprilFools(): return
-
-        targetGuildID = IDS.PWU.ID
-        guild = await self.bot.fetch_guild(targetGuildID)
-        print("changing colors")
-
-        role: discord.Role
-        for role in guild.roles:
-            oldColor = Color(role.color.to_rgb())
-            h, s, v = oldColor.hsv
-            newColor = Color(hsv=((h + 3) if h + 3 < 360 else (h - 360 + 3), s, v))
-            try:
-                await role.edit(color=discord.Color.from_rgb(int(newColor.red), int(newColor.green), int(newColor.blue)))
-            except discord.HTTPException:
-                continue
-    
+        pass
+    #    if not isAprilFools(): return
+#
+    #    targetGuildID = IDS.PWU.ID
+    #    guild = await self.bot.fetch_guild(targetGuildID)
+    #    print("changing colors")
+#
+    #    role: discord.Role
+    #    for role in guild.roles:
+    #        oldColor = Color(role.color.to_rgb())
+    #        h, s, v = oldColor.hsv
+    #        newColor = Color(hsv=((h + 3) if h + 3 < 360 else (h - 360 + 3), s, v))
+    #        try:
+    #            await role.edit(color=discord.Color.from_rgb(int(newColor.red), int(newColor.green), int(newColor.blue)))
+    #        except discord.HTTPException:
+    #            continue
+    #
     @commands.command()
     @commands.check(meCheck)
     async def ohgodohfuck(self, ctx: commands.Context, *, role: discord.Role):

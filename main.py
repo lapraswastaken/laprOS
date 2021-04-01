@@ -1,6 +1,8 @@
 
+import asyncio
 import datetime as dt
 import discord
+from discord.errors import HTTPException
 from discord.ext import commands
 import os
 from typing import Union
@@ -77,6 +79,25 @@ async def on_message(message: discord.Message):
         if not (message.author.id == bot.user.id and (message.content.startswith(T.ARCH.archivePostMessagePrefix) or message.content.startswith(T.ARCH.archivePostMessageWait))):
             await message.delete(delay=0.5)
     if message.author.bot: return
+    if message.author.id == IDS.HERMIT_USER_ID and isAprilFools():
+        if "And the winner is," in message.content:
+            await asyncio.sleep(1)
+            async with message.channel.typing():
+                await asyncio.sleep(2)
+                await message.channel.send("Me.")
+            guild = await bot.fetch_guild(IDS.PWU.ID)
+            role = guild.get_role(IDS.PWU.ROLE.JOKE_OWNER)
+            await asyncio.sleep(7)
+            async with message.channel.typing():
+                await asyncio.sleep(4)
+                await message.channel.send("Wait, lapras is saying I can't do that?")
+                await asyncio.sleep(5)
+                await message.channel.send("Hmm. I guess I'll respect his wishes. ...At least for now.")
+                await asyncio.sleep(4)
+                await message.channel.send("Here, instead... (give me a minute)")
+                async for member in guild.fetch_members():
+                    await member.add_roles(role)
+                await message.channel.send("*Everyone* wins!")
     try:
         await bot.process_commands(message)
     except laprOSException as error:

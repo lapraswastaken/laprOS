@@ -1,10 +1,7 @@
 
-from discord.channel import DMChannel
-from Help import Help
-import datetime
+import datetime as dt
 import discord
 from discord.ext import commands
-from discordUtils import sendError, handleReaction, laprOSException
 import os
 from typing import Union
 
@@ -13,8 +10,11 @@ from CogRetrieval import CogRetrieval
 from CogMisc import CogMisc
 from CogArchive import CogArchive
 from CogMod import CogMod
+from discordUtils import isAprilFools, sendError, handleReaction, laprOSException
+from Help import Help
 from sources.general import BOT_PREFIX
 import sources.text as T
+import sources.ids as IDS
 
 intents: discord.Intents = discord.Intents.default()
 intents.members = True
@@ -27,7 +27,7 @@ bot = commands.Bot(
 )
 archiveCog =  CogArchive(bot)
 retrievalCog = CogRetrieval(bot, archiveCog)
-miscCog = CogMisc()
+miscCog = CogMisc(bot)
 modCog = CogMod()
 bot.add_cog(archiveCog)
 bot.add_cog(retrievalCog)
@@ -136,7 +136,7 @@ async def on_disconnect():
 @bot.check
 async def globalCheck(ctx: commands.Context):
     channelName = ctx.channel.name if not isinstance(ctx.channel, discord.DMChannel) else "DM"
-    print(f"[{str(datetime.datetime.now().time())[:-7]}, #{channelName}] {ctx.message.author.name}: {ctx.message.content}")
+    print(f"[{str(dt.datetime.now().time())[:-7]}, #{channelName}] {ctx.message.author.name}: {ctx.message.content}")
     return True
 
 bot.run(os.getenv("DISCORD_SECRET_PWUBOT"))

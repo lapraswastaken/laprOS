@@ -1,14 +1,15 @@
 
-from Archive import Archive, OVERARCH
-from sources.general import LAPROS_GRAPHIC_URL, EMPTY, escapeLinks, stripLines
-from sources.ids import MOD_ROLE_IDS, MY_USER_ID
-import sources.text as T
-from typing import Optional, Union
-
+import datetime as dt
 import discord
 from discord.ext import commands
 import emoji
 import re
+from typing import Optional, Union
+
+from Archive import Archive, OVERARCH
+from sources.general import LAPROS_GRAPHIC_URL, EMPTY, escapeLinks, stripLines
+import sources.ids as IDS
+import sources.text as T
 
 class laprOSException(Exception):
     def __init__(self, message: str):
@@ -58,10 +59,14 @@ def fail(errorText: str):
     """ Raises a laprOSException with the given message. This gets caught in main.py and the message is sent to the user. """
     raise laprOSException(errorText)
 
-async def sendEscaped(ctx: commands.Context, message: str):
+def isAprilFools():
+    date = dt.date.today()
+    return date.month == 4 and date.day == 1
+
+async def sendEscaped(msgable: discord.abc.Messageable, message: str):
     message = escapeLinks(message)
     print(message)
-    await ctx.send(discord.utils.escape_mentions(message), embed=None, file=None)
+    await msgable.send(discord.utils.escape_mentions(message), embed=None, file=None)
 
 emojiPat = re.compile(r"(<:\w+:\d+>)")
 def getEmojisFromText(text: str):
@@ -89,12 +94,12 @@ def canHandleArchive(ctx: commands.Context):
     return True
 
 def meCheck(ctx: commands.Context):
-    return ctx.author.id == MY_USER_ID
+    return ctx.author.id == IDS.MY_USER_ID
     
 def isModerator(member: Union[discord.Member]):
     if not isinstance(member, discord.Member):
         return False
-    return any([targetID in [role.id for role in member.roles] for targetID in MOD_ROLE_IDS])
+    return any([targetID in [role.id for role in member.roles] for targetID in IDS.MOD_ROLE_IDS])
 
 def moderatorCheck(ctx: commands.Context):
     """ Checks to see if the context's author is a moderator. """

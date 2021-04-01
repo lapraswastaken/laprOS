@@ -66,7 +66,7 @@ class CogMisc(commands.Cog, **M.cog):
         if isAprilFools() and ctx.author.id == IDS.HERMIT_USER_ID:
             await ctx.send(M.coinflip.heads)
             return
-        elif isAprilFools:
+        elif isAprilFools():
             await ctx.send(M.coinflip.tails)
             return
         await ctx.send(M.coinflip.heads if random.randint(0, 1) else M.coinflip.tails)
@@ -89,6 +89,7 @@ class CogMisc(commands.Cog, **M.cog):
     async def stab(self, ctx: commands.Context, *, who: str):
         if ctx.guild and ctx.guild.id == IDS.PWU.ID and (not ctx.channel.id in IDS.SHITPOST_CHANNELS):
             await ctx.send("Do this in humor or misc, please!")
+            return
         stabber: str = ctx.author.display_name
         print(ctx.author.mention)
         if any([
@@ -126,6 +127,7 @@ class CogMisc(commands.Cog, **M.cog):
     async def hug(self, ctx: commands.Context, *, who: str=None):
         if not ctx.channel.id in IDS.SHITPOST_CHANNELS:
             await ctx.send("Do this in humor or misc, please!")
+            return
         hugger = ctx.author.display_name
         if not who or who.lower() == "me":
             who = ctx.author.display_name
@@ -145,6 +147,7 @@ class CogMisc(commands.Cog, **M.cog):
     async def dab(self, ctx: commands.Context, *, who: str=None):
         if ctx.guild and ctx.guild.id == IDS.PWU.ID and (not ctx.channel.id in IDS.SHITPOST_CHANNELS):
             await ctx.send("Do this in humor or misc, please!")
+            return
         dabber: str = ctx.author.display_name
         if not ctx.guild or not ctx.guild.id == IDS.PWU.ID:
             await sendEscaped(ctx, f"Can't dab here. dolphinCry")
@@ -182,8 +185,7 @@ class CogMisc(commands.Cog, **M.cog):
     @tasks.loop(seconds=60 * 10)
     async def changeColors(self):
         
-        if not isAprilFools():
-            return
+        if not isAprilFools(): return
 
         targetGuildID = IDS.PWU.ID
         guild = await self.bot.fetch_guild(targetGuildID)
@@ -202,7 +204,7 @@ class CogMisc(commands.Cog, **M.cog):
     @commands.check(meCheck)
     async def ohgodohfuck(self, ctx: commands.Context, *, role: discord.Role):
 
-        #if not isAprilFools(): return
+        if not isAprilFools(): return
             
         member: discord.Member
         for member in ctx.guild.members:

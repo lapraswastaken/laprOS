@@ -189,6 +189,7 @@ class CogMisc(commands.Cog, **M.cog):
 
         targetGuildID = IDS.PWU.ID
         guild = await self.bot.fetch_guild(targetGuildID)
+        print("changing colors")
 
         role: discord.Role
         for role in guild.roles:

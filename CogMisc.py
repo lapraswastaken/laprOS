@@ -195,7 +195,7 @@ class CogMisc(commands.Cog, **M.cog):
         for role in guild.roles:
             oldColor = Color(role.color.to_rgb())
             h, s, v = oldColor.hsv
-            newColor = Color(hsv=(h + 6, s, v))
+            newColor = Color(hsv=((h + 3) if h + 3 < 360 else (h - 360 + 3), s, v))
             try:
                 await role.edit(color=discord.Color.from_rgb(int(newColor.red), int(newColor.green), int(newColor.blue)))
             except discord.HTTPException:

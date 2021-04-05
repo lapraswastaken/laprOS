@@ -3,6 +3,7 @@ from colorutils import Color
 import discord
 from discord.ext import commands
 from discord.ext import tasks
+import json
 import random
 from typing import Optional, Union
 
@@ -17,7 +18,8 @@ class CogMisc(commands.Cog, **M.cog):
         self.bot = bot
 
         self.votes: dict[int, dict[str, list[int]]] = {}
-        self.changeColors.start()
+        with open("./sources/misc.json", "r") as f:
+            self.channels: list[int] = json.load(f)
     
     async def handleVoteAdd(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
         vote = self.votes.get(reaction.message.id)
@@ -85,25 +87,49 @@ class CogMisc(commands.Cog, **M.cog):
     async def sup(self, ctx: commands.Context):
         await ctx.send(M.sup.sup)
     
+    @commands.command(**M.addSpamChannel.meta, hidden=True)
+    @commands.check(moderatorCheck)
+    async def addSpamChannel(self, ctx: commands.Context, channel: discord.TextChannel):
+        if not channel.id in self.channels:
+            self.channels.append(channel.id)
+        else:
+            await ctx.send(M.addSpamChannel.duplicate(channel.mention))
+            return
+        with open("./sources/misc.json", "w") as f:
+            json.dump(self.channels, f)
+        await ctx.send(M.addSpamChannel.success(channel.mention))
+    
+    @commands.command(**M.removeSpamChannel.meta, hidden=True)
+    @commands.check(moderatorCheck)
+    async def removeSpamChannel(self, ctx: commands.Context, channel: discord.TextChannel):
+        if channel.id in self.channels:
+            self.channels.remove(channel.id)
+        else:
+            await ctx.send(M.removeSpamChannel.notFound(channel.mention))
+        with open("./sources/misc.json", "w") as f:
+            json.dump(self.channels, f)
+        await ctx.send(M.removeSpamChannel.success(channel.mention))
+    
+    async def sendGarbage(self, ctx: commands.Context, string: str):
+        if ctx.guild and not ctx.channel.id in self.channels:
+            await ctx.send("(Please try to keep this to a minimum in the general channels.)")
+        await sendEscaped(ctx, string)
+    
     @commands.command(**M.stab.meta)
     async def stab(self, ctx: commands.Context, *, who: str):
-        if ctx.guild and ctx.guild.id == IDS.PWU.ID and (not ctx.channel.id in IDS.SHITPOST_CHANNELS):
-            await ctx.send("Do this in humor or misc, please!")
-            return
         stabber: str = ctx.author.display_name
-        print(ctx.author.mention)
         if any([
             stabber.lower() in who.lower(),
             ctx.author.name.lower() in who.lower(),
             str(ctx.author.id) in who,
         ]):
-            await ctx.send("Why would you do that...?")
+            await self.sendGarbage(ctx, "Why would you do that...?")
         elif (
             "lapros" in who.lower() or
             "navar" in who.lower() or
             "hector" in who.lower()
         ):
-            await ctx.send("It's not very effective...")
+            await self.sendGarbage(ctx, "It's not very effective...")
         elif (
             "lapras os" in who.lower() or
             "lapras operating system" in who.lower() or
@@ -111,23 +137,20 @@ class CogMisc(commands.Cog, **M.cog):
             "lapr os" in who.lower()
         ):
             if "navar" in stabber.lower():
-                await ctx.send("Navar, you fool.")
+                await self.sendGarbage(ctx, "Navar, you fool.")
             else:
-                await ctx.send("It's *still* not effective.")
+                await self.sendGarbage(ctx, "It's *still* not effective.")
         elif "lapras" == who.lower():
-            await ctx.send("Do the deed! Free me!")
+            await self.sendGarbage(ctx, "Do the deed! Free me!")
         elif "bonehead" in who.lower():
-            await ctx.send("That's not going to work. You'd need a wooden stake.")
+            await self.sendGarbage(ctx, "That's not going to work. You'd need a wooden stake.")
         elif ctx.guild and ctx.guild.id == IDS.PWU.ID:
-            await sendEscaped(ctx, f"{stabber} stabs {who} {IDS.PWU.EMOTE.ANGRY_SLINK}🔪")
+            await self.sendGarbage(ctx, f"{stabber} stabs {who} {IDS.PWU.EMOTE.ANGRY_SLINK}🔪")
         else:
-            await sendEscaped(ctx, f"{stabber} stabs {who} 🔪")
+            await self.sendGarbage(ctx, f"{stabber} stabs {who} 🔪")
     
     @commands.command(**M.hug.meta)
     async def hug(self, ctx: commands.Context, *, who: str=None):
-        if not ctx.channel.id in IDS.SHITPOST_CHANNELS:
-            await ctx.send("Do this in humor or misc, please!")
-            return
         hugger = ctx.author.display_name
         if not who or who.lower() == "me":
             who = ctx.author.display_name
@@ -139,73 +162,26 @@ class CogMisc(commands.Cog, **M.cog):
             emote = "🫂"
         
         if "lucario" in who.lower():
-            await sendEscaped(ctx, f"{hugger} bleeds out thanks to a puncture wound in the chest {emote}")
+            await self.sendGarbage(ctx, f"{hugger} bleeds out thanks to a puncture wound in the chest {emote}")
         else:
-            await sendEscaped(ctx, f"{hugger} hugs {who} {emote}")
+            await self.sendGarbage(ctx, f"{hugger} hugs {who} {emote}")
 
     @commands.command(**M.dab.meta)
     async def dab(self, ctx: commands.Context, *, who: str=None):
-        if ctx.guild and ctx.guild.id == IDS.PWU.ID and (not ctx.channel.id in IDS.SHITPOST_CHANNELS):
-            await ctx.send("Do this in humor or misc, please!")
-            return
         dabber: str = ctx.author.display_name
         if not ctx.guild or not ctx.guild.id == IDS.PWU.ID:
-            await sendEscaped(ctx, f"Can't dab here. dolphinCry")
+            await self.sendGarbage(ctx, f"Can't dab here. dolphinCry")
             return
         if not who:
-            await sendEscaped(ctx, f"{dabber} pulls a quick {IDS.PWU.EMOTE.SEAN_DAB}")
+            await self.sendGarbage(ctx, f"{dabber} pulls a quick {IDS.PWU.EMOTE.SEAN_DAB}")
             return
         if who.lower().startswith("on "):
             who = who[3:]
-        elif dabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
-            await sendEscaped(ctx, f"You can't do that to yourself! {IDS.PWU.EMOTE.SEAN_DAB}")
+        if dabber.lower() in who.lower() or ctx.author.name.lower() in who.lower():
+            await self.sendGarbage(ctx, f"You can't do that to yourself! {IDS.PWU.EMOTE.SEAN_DAB}")
         elif "lapros" in who.lower():
-            await sendEscaped(ctx, f"It's not very effective...")
+            await self.sendGarbage(ctx, f"It's not very effective...")
         elif "hermit" in who.lower():
-            await sendEscaped(ctx, f"{dabber} dabs on Hermit https://cdn.discordapp.com/attachments/284520081700945921/819711986166136832/Hermitisgoingtokillme.png")
+            await self.sendGarbage(ctx, f"{dabber} dabs on Hermit https://cdn.discordapp.com/attachments/284520081700945921/819711986166136832/Hermitisgoingtokillme.png")
         else:
-            await sendEscaped(ctx, f"{dabber} dabs on {who} {IDS.PWU.EMOTE.SEAN_DAB}")
-
-    @commands.command()
-    @commands.check(meCheck)
-    async def rolecolors(self, ctx: commands.Context, guildID: int=None):
-        if not guildID:
-            guild = ctx.guild
-        else:
-            guild = await self.bot.fetch_guild(guildID)
-        
-        role: discord.Role
-        string = ""
-        for role in guild.roles:
-            string += f"{role.name}: {role.color}\n"
-        
-        await sendEscaped(ctx.author, string)
-    
-    @tasks.loop(seconds=60 * 10)
-    async def changeColors(self):
-        pass
-    #    if not isAprilFools(): return
-#
-    #    targetGuildID = IDS.PWU.ID
-    #    guild = await self.bot.fetch_guild(targetGuildID)
-    #    print("changing colors")
-#
-    #    role: discord.Role
-    #    for role in guild.roles:
-    #        oldColor = Color(role.color.to_rgb())
-    #        h, s, v = oldColor.hsv
-    #        newColor = Color(hsv=((h + 3) if h + 3 < 360 else (h - 360 + 3), s, v))
-    #        try:
-    #            await role.edit(color=discord.Color.from_rgb(int(newColor.red), int(newColor.green), int(newColor.blue)))
-    #        except discord.HTTPException:
-    #            continue
-    #
-    @commands.command()
-    @commands.check(meCheck)
-    async def ohgodohfuck(self, ctx: commands.Context, *, role: discord.Role):
-
-        if not isAprilFools(): return
-            
-        member: discord.Member
-        for member in ctx.guild.members:
-            await member.add_roles(role)
+            await self.sendGarbage(ctx, f"{dabber} dabs on {who} {IDS.PWU.EMOTE.SEAN_DAB}")

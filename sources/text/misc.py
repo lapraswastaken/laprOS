@@ -34,6 +34,18 @@ coinflip = Cmd(
     heads = "Heads!",
     tails = "Tails!"
 )
+addSpamChannel = Cmd(
+    "addspamchannel",
+    "Registers a channel to allow the use of spam commands.",
+    success = lambda channel: f"Successfully added channel {channel} to the list of spam command channels.",
+    duplicate = lambda channel: f"The channel {channel} is already listed as a spam command channel."
+)
+removeSpamChannel = Cmd(
+    "removespamchannel",
+    "Removes a channel from the list of spam command channels.",
+    success = lambda channel: f"Successfully removed channel {channel} from the list of spam command channels.",
+    notFound = lambda channel: f"The channel {channel} is not listed as a spam command channel."
+)
 sup = Cmd(
     "sup",
     "Yo.",

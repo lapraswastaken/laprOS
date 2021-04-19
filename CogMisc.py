@@ -128,18 +128,18 @@ class CogMisc(commands.Cog, **M.cog):
     @commands.command(**M.WHEN.meta)
     async def when(self, ctx: commands.Context, time: str, *, tz: str):
         if not ":" in time:
-            fail(M.ERR.TIME_FORMAT)
+            fail(M.ERR.TIME_FORMAT(time))
         h, m = time.split(":")
-        if not all([n in "1234567890" for n in h]):
-            fail(M.ERR.TIME_FORMAT)
+        if not all([n in "1234567890" for n in h]) or not h:
+            fail(M.ERR.TIME_FORMAT(time))
         h = int(h)
         if m.endswith("pm"):
             h += 12
             m = m[:2]
         if m.endswith("am"):
             m = m[:2]
-        if not all([n in "1234567890" for n in m]):
-            fail(M.ERR.TIME_FORMAT)
+        if not all([n in "1234567890" for n in m]) or not m:
+            fail(M.ERR.TIME_FORMAT(time))
         m = int(m)
         
         try:

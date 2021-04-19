@@ -1,17 +1,19 @@
 
-from colorutils import Color
+import datetime as dt
 import discord
 from discord.ext import commands
-from discord.ext import tasks
 import json
+from pytz import UnknownTimeZoneError, timezone
 import random
 from typing import Optional, Union
 
-from discordUtils import getEmojisFromText, isAprilFools, meCheck, moderatorCheck, sendEscaped
+from discordUtils import fail, getEmojisFromText, isAprilFools, meCheck, moderatorCheck, sendEscaped
 import sources.text as T
 import sources.ids as IDS
 
 M = T.MISC
+
+_FORMAT = "%I:%M:%S%p, %b %d (%a), %Y"
 
 class CogMisc(commands.Cog, **M.cog):
     def __init__(self, bot: commands.Bot):
@@ -20,6 +22,8 @@ class CogMisc(commands.Cog, **M.cog):
         self.votes: dict[int, dict[str, list[int]]] = {}
         with open("./sources/misc.json", "r") as f:
             self.channels: list[int] = json.load(f)
+        with open(M.PATH.TZPREFS, "r") as f:
+            self.tzprefs: dict[str, str] = json.load(f)
     
     async def handleVoteAdd(self, reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
         vote = self.votes.get(reaction.message.id)
@@ -86,6 +90,70 @@ class CogMisc(commands.Cog, **M.cog):
     @commands.command(**M.sup.meta, hidden=True)
     async def sup(self, ctx: commands.Context):
         await ctx.send(M.sup.sup)
+    
+    @commands.command(**M.TIMEZONE.meta)
+    async def timezone(self, ctx: commands.Context, tz: Optional[str]=None):
+        if not tz:
+            tzObj = self.getTZForUser(ctx.author.id)
+            if not tzObj:
+                await ctx.send(M.INFO.TZ_USE_THIS)
+            else:
+                await ctx.send(M.INFO.TZ_USING(tzObj.zone))
+            return
+        try:
+            tzObj = timezone(tz)
+        except UnknownTimeZoneError:
+            await ctx.send(M.ERR.INVALID_TZ(tz))
+            return
+        self.tzprefs[str(ctx.author.id)] = tz
+        with open(M.PATH.TZPREFS, "w") as f:
+            json.dump(self.tzprefs, f)
+        await ctx.send(M.INFO.TZ_SUCCESS(tzObj.zone))
+    
+    def getTZForUser(self, userID: int):
+        try:
+            return timezone(self.tzprefs.get(str(userID)))
+        except UnknownTimeZoneError:
+            return None
+    
+    @commands.command(**M.NOW.meta)
+    async def now(self, ctx: commands.Context):
+        tzObj = self.getTZForUser(ctx.author.id)
+        if not tzObj:
+            fail(M.ERR.NO_TZ)
+        else:
+            now = dt.datetime.now(tzObj)
+            await ctx.send(M.INFO.NOW(tzObj.zone, now.strftime(_FORMAT)))
+    
+    @commands.command(**M.WHEN.meta)
+    async def when(self, ctx: commands.Context, time: str, *, tz: str):
+        if not ":" in time:
+            fail(M.ERR.TIME_FORMAT)
+        h, m = time.split(":")
+        if not all([n in "1234567890" for n in h]):
+            fail(M.ERR.TIME_FORMAT)
+        h = int(h)
+        if m.endswith("pm"):
+            h += 12
+            m = m[:2]
+        if m.endswith("am"):
+            m = m[:2]
+        if not all([n in "1234567890" for n in m]):
+            fail(M.ERR.TIME_FORMAT)
+        m = int(m)
+        
+        try:
+            targetTZ = timezone(tz)
+        except UnknownTimeZoneError:
+            fail(M.ERR.INVALID_TZ(tz))
+        
+        originalTZ = self.getTZForUser(ctx.author.id)
+        if not originalTZ:
+            raise fail(M.ERR.NO_TZ)
+        else:
+            originalDT = dt.datetime.now(originalTZ).replace(hour=h, minute=m)
+            targetDT = originalDT.astimezone(targetTZ)
+            await ctx.send(M.INFO.WHEN(originalDT.strftime("%I:%M%p"), originalTZ.zone, targetDT.strftime("%I:%M%p"), targetTZ.zone))
     
     @commands.command(**M.addSpamChannel.meta, hidden=True)
     @commands.check(moderatorCheck)

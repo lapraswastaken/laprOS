@@ -2,7 +2,7 @@
 from typing import Callable, Union
 import random
 
-from discordUtils import canHandleArchive, convertMember, fail, fetchChannel, getGuildFromContext, getLaprOSEmbed, isModerator, moderatorCheck, paginate
+from discordUtils import canHandleArchive, convertMember, fail, fetchChannel, getLaprOSEmbed, isModerator, moderatorCheck, paginate
 import discord
 from discord.ext import commands
 

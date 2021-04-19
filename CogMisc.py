@@ -185,3 +185,7 @@ class CogMisc(commands.Cog, **M.cog):
             await self.sendGarbage(ctx, f"{dabber} dabs on Hermit https://cdn.discordapp.com/attachments/284520081700945921/819711986166136832/Hermitisgoingtokillme.png")
         else:
             await self.sendGarbage(ctx, f"{dabber} dabs on {who} {IDS.PWU.EMOTE.SEAN_DAB}")
+    
+    @commands.command(**M.pizza.meta)
+    async def pizza(self, ctx: commands.Context):
+        await self.sendGarbage(ctx, "🍕")

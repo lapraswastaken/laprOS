@@ -80,9 +80,6 @@ LAPROS_GRAPHIC_URL = "https://cdn.discordapp.com/attachments/284520081700945921/
 MENTION_ME = f"<@{IDS.MY_USER_ID}>"
 EMPTY = "\u200b"
 
-REF_COMMAND = lambda command: f'`{BOT_PREFIX}{command["name"]}`'
-REF_COMMAND_PLAIN = lambda command: f'{BOT_PREFIX}{command["name"]}'
-
 LINK_RE = re.compile(r"(?!<)(https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*))(?!>)")
 
 escapeLinks = lambda text: LINK_RE.sub(r"<\1>", text)

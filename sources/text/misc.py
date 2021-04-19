@@ -81,3 +81,7 @@ dab = Cmd(
         "on laprOS"
     ]
 )
+pizza = Cmd(
+    "pizza",
+    "Idfk, blame all yourselves because you voted for Hermit"
+)

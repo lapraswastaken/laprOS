@@ -12,7 +12,7 @@ from CogRetrieval import CogRetrieval
 from CogMisc import CogMisc
 from CogArchive import CogArchive
 from CogMod import CogMod
-from discordUtils import isAprilFools, sendError, handleReaction, laprOSException
+from discordUtils import sendError, handleReaction, laprOSException
 from Help import Help
 from sources.general import BOT_PREFIX
 import sources.text as T

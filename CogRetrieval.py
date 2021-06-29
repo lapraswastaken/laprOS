@@ -1,6 +1,7 @@
 
 from typing import Callable, Union
 import random
+from fuzzywuzzy import fuzz
 
 from discordUtils import canHandleArchive, convertMember, fail, fetchChannel, getLaprOSEmbed, isModerator, moderatorCheck, paginate
 import discord
@@ -146,10 +147,7 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
         
         pages = []
         for post in archive.posts.values():
-            foundStories: list[Story] = []
-            for story in post.stories:
-                if matcher(story):
-                    foundStories.append(story)
+            foundstories: list[Story] = [story in post.stories if matcher(story)][:5]
             
             if foundStories:
                 author = await convertMember(post.authorID, ctx)
@@ -170,11 +168,7 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
     async def byTitle(self, ctx: commands.Context, *, title: str):
 
         def match(story: Story):
-            if story.title.lower() == title.lower():
-                return True
-            elif title.lower() in story.title.lower():
-                return True
-            return False
+            return fuzz.partial_ratio(story.title.lower(), title.lower) >= 95
         
         await CogRetrieval.collectStories(ctx, match, R.collectionTitle(R.byTitle, title), R.byTitle.noResults(title))
         
@@ -193,3 +187,4 @@ class CogRetrieval(commands.Cog, **T.RETR.cog):
             return story.getGenre(genre)
         
         await CogRetrieval.collectStories(ctx, match, R.collectionTitle(R.byGenre, genre), R.byGenre.noResults(genre))
+

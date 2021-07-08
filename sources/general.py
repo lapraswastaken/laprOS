@@ -43,7 +43,11 @@ ALL_SITE_ABBREVIATIONS = {
     "RR": "Royal Road",
     "DA": "Deviant Art",
     "WP": "WattPad",
-    "GD": "Google Docs"
+    "GD": "Google Docs",
+    "CF": "Comic Fury",
+    "TB": "Tumblr",
+    "CL": "Canalave Library",
+    "SF": "Serebii Forums",
 }
 
 BOT_PREFIX = "lap."

@@ -21,8 +21,16 @@ import sources.ids as IDS
 intents: discord.Intents = discord.Intents.default()
 intents.members = True
 
+def determinePrefix(bot: commands.Bot, message: discord.Message):
+    if isinstance(message.channel, discord.DMChannel):
+        if message.content.startswith(BOT_PREFIX):
+            return BOT_PREFIX
+        return ""
+    else:
+        return BOT_PREFIX
+
 bot = commands.Bot(
-    command_prefix=BOT_PREFIX,
+    command_prefix=determinePrefix,
     case_insensitive=True,
     help_command=Help(verify_checks=False),
     intents=intents
@@ -70,7 +78,6 @@ async def on_reaction_remove(reaction: discord.Reaction, user: Union[discord.Use
 @bot.event
 async def on_message_delete(message: discord.Message):
     if message.author.bot: return
-    await miscCog.handleMessageDelete(message)
     await modCog.handleMessageDelete(message)
 
 @bot.event
@@ -94,10 +101,6 @@ class MiniEntry:
         self.count = count
 
 oldDeleteEntries: dict[int, MiniEntry] = {}
-
-@bot.event
-async def on_message_delete(message: discord.Message):
-    await modCog.handleMessageDelete(message)
 
 @bot.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):

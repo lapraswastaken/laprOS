@@ -327,7 +327,6 @@ class CogArchive(commands.Cog, **A.cog):
     @commands.command(**A.setRatingReason.meta)
     async def setratingreason(self, ctx: commands.Context, *newReason: str):
         newReason = " ".join(newReason)
-        author = await getAuthorFromContext(ctx)
         
         async def changeReason(story: Story):
             try:

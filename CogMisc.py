@@ -92,7 +92,7 @@ class CogMisc(commands.Cog, **M.cog):
         await ctx.send(M.sup.sup)
     
     @commands.command(**M.TIMEZONE.meta)
-    async def timezone(self, ctx: commands.Context, tz: Optional[str]=None):
+    async def timezone(self, ctx: commands.Context, *, tz: Optional[str]=None):
         if not tz:
             tzObj = self.getTZForUser(ctx.author.id)
             if not tzObj:
@@ -103,8 +103,7 @@ class CogMisc(commands.Cog, **M.cog):
         try:
             tzObj = timezone(tz)
         except UnknownTimeZoneError:
-            await ctx.send(M.ERR.INVALID_TZ(tz))
-            return
+            fail(M.ERR.INVALID_TZ(tz))
         self.tzprefs[str(ctx.author.id)] = tz
         with open(M.PATH.TZPREFS, "w") as f:
             json.dump(self.tzprefs, f)
@@ -117,13 +116,17 @@ class CogMisc(commands.Cog, **M.cog):
             return None
     
     @commands.command(**M.NOW.meta)
-    async def now(self, ctx: commands.Context):
+    async def now(self, ctx: commands.Context, *, tz: Optional[str]=None):
         tzObj = self.getTZForUser(ctx.author.id)
-        if not tzObj:
+        if not tzObj and not tz:
             fail(M.ERR.NO_TZ)
-        else:
-            now = dt.datetime.now(tzObj)
-            await ctx.send(M.INFO.NOW(tzObj.zone, now.strftime(_FORMAT)))
+        elif tz:
+            try:
+                tzObj = timezone(tz)
+            except UnknownTimeZoneError:
+                fail(M.ERR.INVALID_TZ(tz))
+        now = dt.datetime.now(tzObj)
+        await ctx.send(M.INFO.NOW(tzObj.zone, now.strftime(_FORMAT)))
     
     @commands.command(**M.WHEN.meta)
     async def when(self, ctx: commands.Context, time: str, *, tz: str):
